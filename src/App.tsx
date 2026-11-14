@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
   Compass,
   Eye,
   Layers,
@@ -490,6 +491,21 @@ export default function App() {
             onSelectLandmark={setSelectedLandmark}
           />
 
+          {/* Unreachable Route Banner (shown automatically when route cannot be safely traversed) */}
+          {!isRouting && !route.found && (
+            <button
+              type="button"
+              onClick={() => setActiveDrawer('nav')}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-20 max-w-[90vw] flex items-center gap-2.5 bg-[#16080C]/94 border border-rose-500/45 text-rose-200 px-4 py-2 rounded text-xs shadow-xl hover:border-rose-400 transition-colors"
+            >
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="font-semibold text-rose-300 whitespace-nowrap">
+                이동 불가
+              </span>
+              <span className="text-slate-200 truncate">{route.summaryKo}</span>
+            </button>
+          )}
+
           {/* Bottom-Left Region Quick-Switch */}
           <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1 bg-[#06090F]/90 border border-white/10 rounded p-1">
             {(['global', 'tharsis', 'elysium'] as RegionId[]).map((id) => (
@@ -532,13 +548,19 @@ export default function App() {
             <button
               type="button"
               onClick={() => toggleDrawer('inspect')}
-              className="font-mono text-emerald-300 hover:text-emerald-200 whitespace-nowrap"
+              className={`font-mono whitespace-nowrap ${
+                isRouting
+                  ? 'text-slate-300'
+                  : route.found
+                    ? 'text-emerald-300 hover:text-emerald-200'
+                    : 'text-rose-400 hover:text-rose-300 font-semibold'
+              }`}
             >
               {isRouting
                 ? '실사 지형 경로 분석 중...'
                 : route.found
                   ? `상세 경로 ${route.totalDistanceKm}km (${route.waypoints.length}개 경유점)`
-                  : '경로 없음'}
+                  : '이동 불가 경로 (갈 수 없음)'}
             </button>
           </div>
 
@@ -916,7 +938,9 @@ export default function App() {
                     <div className="space-y-2 pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-300 font-medium">
-                          단계별 상세 길안내 ({route.waypoints.length}단계)
+                          {route.found
+                            ? `단계별 상세 길안내 (${route.waypoints.length}단계)`
+                            : '경로 탐색 결과'}
                         </span>
                         <span className="font-mono text-[10px] text-sky-300">
                           {route.terrainSource === 'nasa_tiles'
@@ -925,8 +949,19 @@ export default function App() {
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
-                        {route.waypoints.map((wp) => (
+                      {!isRouting && !route.found ? (
+                        <div className="bg-rose-950/40 border border-rose-500/35 rounded p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-rose-300 font-semibold">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>갈 수 없는 경로 (이동 불가)</span>
+                          </div>
+                          <p className="text-[11px] text-slate-200 leading-relaxed">
+                            {route.summaryKo}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {route.waypoints.map((wp) => (
                           <button
                             key={wp.index}
                             type="button"
@@ -964,8 +999,9 @@ export default function App() {
                               {wp.instructionKo}
                             </div>
                           </button>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2 pt-4 border-t border-white/10">
@@ -1139,12 +1175,23 @@ export default function App() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-slate-400">
                         <span>네비게이션 요약</span>
-                        <span className="font-mono text-sky-300">
+                        <span
+                          className={`font-mono ${
+                            route.found
+                              ? 'text-sky-300'
+                              : 'text-rose-400 font-semibold'
+                          }`}
+                        >
                           {route.found
                             ? `안전도 ${route.safetyScore}/100`
-                            : '경로 없음'}
+                            : '이동 불가'}
                         </span>
                       </div>
+                      {!isRouting && !route.found && (
+                        <div className="bg-rose-950/40 border border-rose-500/35 rounded p-2.5 text-[11px] text-rose-200 leading-relaxed">
+                          {route.summaryKo}
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-black/45 border border-white/10 rounded p-2.5">
                           <div className="text-[10px] text-slate-400">총 거리</div>

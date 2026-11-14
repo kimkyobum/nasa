@@ -520,18 +520,23 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       }
       ctx.restore();
 
-      // 4. Computed A* Navigation Route
+      // 4. Computed A* Navigation Route (or Unreachable indicator)
       if (curRoute.found && curRoute.points.length > 1) {
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
         ctx.beginPath();
+        let prevScreen: { x: number; y: number } | null = null;
         for (let idx = 0; idx < curRoute.points.length; idx++) {
           const pt = curRoute.points[idx];
           const p = toScreen(pt.lat, pt.lon);
-          if (idx === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
+          if (!prevScreen || Math.abs(p.x - prevScreen.x) > width * 0.5) {
+            ctx.moveTo(p.x, p.y);
+          } else {
+            ctx.lineTo(p.x, p.y);
+          }
+          prevScreen = p;
         }
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
         ctx.lineWidth = 7;
@@ -540,6 +545,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         for (let i = 1; i < curRoute.points.length; i++) {
           const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
           const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
+          if (Math.abs(p1.x - p0.x) > width * 0.5) continue;
           ctx.beginPath();
           ctx.moveTo(p0.x, p0.y);
           ctx.lineTo(p1.x, p1.y);
@@ -554,6 +560,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         for (let i = 5; i < curRoute.points.length - 2; i += 7) {
           const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
           const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
+          if (Math.abs(p1.x - p0.x) > width * 0.5) continue;
           const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
           ctx.save();
           ctx.translate(p1.x, p1.y);
@@ -597,6 +604,20 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           ctx.restore();
         }
         ctx.restore();
+      } else if (!curRoute.found && curRoute.directDistanceKm > 0) {
+        const pStart = toScreen(curStart.lat, curStart.lon);
+        const pDest = toScreen(curDest.lat, curDest.lon);
+        if (Math.abs(pDest.x - pStart.x) <= width * 0.55) {
+          ctx.save();
+          ctx.setLineDash([6, 6]);
+          ctx.strokeStyle = 'rgba(251, 113, 133, 0.55)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(pStart.x, pStart.y);
+          ctx.lineTo(pDest.x, pDest.y);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       // 5. Landmarks with tier-based zoom decluttering + cached label widths (zero shadowBlur!)
@@ -732,7 +753,12 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       };
 
       drawPin(curStart.lat, curStart.lon, 'START', '#F8FAFC');
-      drawPin(curDest.lat, curDest.lon, 'TARGET', '#38BDF8');
+      drawPin(
+        curDest.lat,
+        curDest.lon,
+        curRoute.found ? 'TARGET' : 'BLOCKED',
+        curRoute.found ? '#38BDF8' : '#FB7185'
+      );
 
       if (curSelectedPt) {
         const p = toScreen(curSelectedPt.lat, curSelectedPt.lon);
