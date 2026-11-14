@@ -365,14 +365,53 @@ function runWeightedAStar(
   const heuristic = (r: number, c: number) =>
     Math.hypot((r - dest.row) * stepLatKm, (c - dest.col) * stepLonKm);
 
-  const open: AStarNode[] = [
-    {
-      r: start.row,
-      c: start.col,
-      g: 0,
-      f: heuristic(start.row, start.col),
-    },
-  ];
+  class MinHeap {
+    private items: AStarNode[] = [];
+    get length() {
+      return this.items.length;
+    }
+    clear() {
+      this.items.length = 0;
+    }
+    push(node: AStarNode) {
+      const a = this.items;
+      a.push(node);
+      let i = a.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (a[p].f <= a[i].f) break;
+        const tmp = a[p];
+        a[p] = a[i];
+        a[i] = tmp;
+        i = p;
+      }
+    }
+    pop(): AStarNode {
+      const a = this.items;
+      const top = a[0];
+      const last = a.pop()!;
+      if (a.length > 0) {
+        a[0] = last;
+        let i = 0;
+        const n = a.length;
+        while (true) {
+          let smallest = i;
+          const l = (i << 1) + 1;
+          const r = l + 1;
+          if (l < n && a[l].f < a[smallest].f) smallest = l;
+          if (r < n && a[r].f < a[smallest].f) smallest = r;
+          if (smallest === i) break;
+          const tmp = a[i];
+          a[i] = a[smallest];
+          a[smallest] = tmp;
+          i = smallest;
+        }
+      }
+      return top;
+    }
+  }
+
+  const open = new MinHeap();
   gScore[startIdx] = 0;
 
   const dirs = [
@@ -391,7 +430,7 @@ function runWeightedAStar(
     gScore.fill(Infinity);
     cameFrom.fill(-1);
     closed.fill(0);
-    open.length = 0;
+    open.clear();
     gScore[startIdx] = 0;
     open.push({
       r: start.row,
@@ -401,13 +440,7 @@ function runWeightedAStar(
     });
 
     while (open.length > 0) {
-      let bestI = 0;
-      for (let i = 1; i < open.length; i++) {
-        if (open[i].f < open[bestI].f) bestI = i;
-      }
-      const current = open[bestI];
-      open[bestI] = open[open.length - 1];
-      open.pop();
+      const current = open.pop();
 
       const cIdx = idx(current.r, current.c);
       if (cIdx === destIdx) return true;

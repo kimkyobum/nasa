@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Compass,
@@ -174,21 +174,33 @@ export default function App() {
     setViewPpd(preset.ppd);
   };
 
-  const handleMapClick = (pt: MarsTelemetryPoint) => {
-    setInspectedPoint(pt);
-    const near = findNearestLandmark(pt.lat, pt.lon, 0.35);
-    if (clickTool === 'destination') {
-      setDestCoord({ lat: pt.lat, lon: pt.lon });
-      setDestLatInput(String(pt.lat));
-      setDestLonInput(String(pt.lon));
-      setSelectedLandmark(near ? near.landmark : null);
-    } else if (clickTool === 'start') {
-      setStartCoord({ lat: pt.lat, lon: pt.lon });
-    } else {
-      if (near) setSelectedLandmark(near.landmark);
-      setActiveDrawer('inspect');
-    }
-  };
+  const handleViewportChange = useCallback(
+    (lat: number, lon: number, nextPpd: number) => {
+      setViewLat(lat);
+      setViewLon(lon);
+      setViewPpd(nextPpd);
+    },
+    []
+  );
+
+  const handleMapClick = useCallback(
+    (pt: MarsTelemetryPoint) => {
+      setInspectedPoint(pt);
+      const near = findNearestLandmark(pt.lat, pt.lon, 0.35);
+      if (clickTool === 'destination') {
+        setDestCoord({ lat: pt.lat, lon: pt.lon });
+        setDestLatInput(String(pt.lat));
+        setDestLonInput(String(pt.lon));
+        setSelectedLandmark(near ? near.landmark : null);
+      } else if (clickTool === 'start') {
+        setStartCoord({ lat: pt.lat, lon: pt.lon });
+      } else {
+        if (near) setSelectedLandmark(near.landmark);
+        setActiveDrawer('inspect');
+      }
+    },
+    [clickTool]
+  );
 
   const applyManualDest = () => {
     const lat = parseFloat(destLatInput);
@@ -415,7 +427,7 @@ export default function App() {
             className={`px-2.5 py-1.5 text-xs font-medium rounded border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'map' && activeDrawer === 'search'
                 ? 'bg-white/15 text-white border-white/30'
-                : 'bg-black/55 backdrop-blur-md text-slate-300 border-white/15 hover:border-white/35 hover:text-white'
+                : 'bg-[#06090F]/88 text-slate-300 border-white/15 hover:border-white/35 hover:text-white'
             }`}
           >
             <Search className="w-3.5 h-3.5" strokeWidth={1.6} />
@@ -433,7 +445,7 @@ export default function App() {
             className={`px-3.5 py-1.5 text-xs font-medium rounded border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               arVisorMode
                 ? 'bg-sky-400 text-slate-950 border-sky-300 font-semibold'
-                : 'bg-black/55 backdrop-blur-md text-slate-200 border-white/15 hover:border-sky-400/60 hover:text-white'
+                : 'bg-[#06090F]/88 text-slate-200 border-white/15 hover:border-sky-400/60 hover:text-white'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -461,11 +473,7 @@ export default function App() {
             centerLat={viewLat}
             centerLon={viewLon}
             ppd={viewPpd}
-            onViewportChange={(lat, lon, nextPpd) => {
-              setViewLat(lat);
-              setViewLon(lon);
-              setViewPpd(nextPpd);
-            }}
+            onViewportChange={handleViewportChange}
             layers={layers}
             minWaterThreshold={minWaterThreshold}
             maxSlopeThreshold={maxSlopeThreshold}
@@ -483,7 +491,7 @@ export default function App() {
           />
 
           {/* Bottom-Left Region Quick-Switch */}
-          <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/10 rounded p-1">
+          <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1 bg-[#06090F]/90 border border-white/10 rounded p-1">
             {(['global', 'tharsis', 'elysium'] as RegionId[]).map((id) => (
               <button
                 key={id}
@@ -505,7 +513,7 @@ export default function App() {
           </div>
 
           {/* Bottom-Center Sleek Telemetry & Route Strip */}
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 hidden md:flex items-center gap-4 bg-black/75 backdrop-blur-md border border-white/10 px-5 py-2 rounded text-xs">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 hidden md:flex items-center gap-4 bg-[#06090F]/90 border border-white/10 px-5 py-2 rounded text-xs">
             <span className="font-mono text-white whitespace-nowrap">
               {liveProbe.lat >= 0
                 ? `${liveProbe.lat.toFixed(2)}°N`
@@ -535,7 +543,7 @@ export default function App() {
           </div>
 
           {/* Bottom-Right Vertical Minimal Toolbar */}
-          <div className="absolute bottom-5 right-5 z-20 flex flex-col gap-1 bg-black/75 backdrop-blur-md border border-white/10 p-1 rounded">
+          <div className="absolute bottom-5 right-5 z-20 flex flex-col gap-1 bg-[#06090F]/90 border border-white/10 p-1 rounded">
             <button
               type="button"
               onClick={() => toggleDrawer('search')}
@@ -645,7 +653,7 @@ export default function App() {
 
           {/* On-Demand Slide-In Drawer */}
           {activeDrawer !== 'none' && (
-            <aside className="absolute top-16 right-16 bottom-16 w-[345px] z-20 bg-[#070A10]/92 backdrop-blur-xl border border-white/10 rounded-lg flex flex-col overflow-hidden shadow-2xl">
+            <aside className="absolute top-16 right-16 bottom-16 w-[345px] z-20 bg-[#070A10]/94 border border-white/10 rounded-lg flex flex-col overflow-hidden shadow-2xl">
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                 <span className="text-xs font-semibold tracking-wide text-white">
                   {activeDrawer === 'search'

@@ -406,6 +406,54 @@ export function sampleMarsTelemetry(
   };
 }
 
+export interface GlobalTelemetryAtlas {
+  width: number;
+  height: number;
+  latMin: number;
+  latMax: number;
+  water: Uint8Array;
+  soil: Uint8Array;
+  gamma: Uint8Array;
+  geo: Uint8Array;
+  slopeX10: Uint16Array;
+}
+
+let cachedAtlas: GlobalTelemetryAtlas | null = null;
+
+export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
+  if (cachedAtlas) return cachedAtlas;
+
+  const width = 432; // ~0.83 deg/px longitude (-180..180)
+  const height = 204; // ~0.83 deg/px latitude (+85..-85)
+  const latMax = 85;
+  const latMin = -85;
+  const total = width * height;
+
+  const water = new Uint8Array(total);
+  const soil = new Uint8Array(total);
+  const gamma = new Uint8Array(total);
+  const geo = new Uint8Array(total);
+  const slopeX10 = new Uint16Array(total);
+
+  for (let y = 0; y < height; y++) {
+    const lat = latMax - ((y + 0.5) / height) * (latMax - latMin);
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x++) {
+      const lon = -180 + ((x + 0.5) / width) * 360;
+      const pt = sampleMarsTelemetry(lat, lon);
+      const idx = rowOffset + x;
+      water[idx] = pt.combinedWaterProb;
+      soil[idx] = pt.soilFertility;
+      gamma[idx] = pt.gammaHydrogen;
+      geo[idx] = pt.geothermalIndex;
+      slopeX10[idx] = Math.round(pt.slopeDeg * 10);
+    }
+  }
+
+  cachedAtlas = { width, height, latMin, latMax, water, soil, gamma, geo, slopeX10 };
+  return cachedAtlas;
+}
+
 export const NASA_DATASETS: NasaDatasetSpec[] = [
   {
     id: 'mars_trek_wmts',
