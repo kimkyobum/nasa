@@ -682,7 +682,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
             else ctx.lineTo(p.x, p.y);
           }
           ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-          ctx.lineWidth = 7;
+          ctx.lineWidth = 3.5;
           ctx.stroke();
 
           for (let i = 1; i < curRoute.points.length; i++) {
@@ -694,7 +694,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
             const hz = curRoute.points[i].hazardLevel;
             ctx.strokeStyle =
               hz === 'high' ? '#FB7185' : hz === 'moderate' ? '#FBBF24' : '#38BDF8';
-            ctx.lineWidth = 2.4;
+            ctx.lineWidth = 1.4;
             ctx.stroke();
           }
 
@@ -1110,7 +1110,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const v = viewRef.current;
       const factor = e.deltaY < 0 ? 1.22 : 0.82;
       const minPpd = getMinPpd(canvasSize.width, canvasSize.height);
-      const nextPpd = clamp(v.ppd * factor, minPpd, 140);
+      const nextPpd = clamp(v.ppd * factor, minPpd, 480);
 
       const mouseLon = v.lon + (sx - canvasSize.width / 2) / v.ppd;
       const mouseLat = v.lat - (sy - canvasSize.height / 2) / v.ppd;

@@ -1002,7 +1002,7 @@ export default function App() {
                 ? { width: '100vw' }
                 : { width: isDrawerOpen ? `${drawerWidthPx}px` : '0px' }
             }
-            className={`relative h-full overflow-hidden bg-[#0a111e]/[0.95] pointer-events-auto ${
+            className={`relative h-full overflow-hidden bg-[#0a111e]/78 backdrop-blur-md pointer-events-auto ${
               isPlaceFullscreen
                 ? 'w-screen border-r-0'
                 : `max-w-[calc(100vw-68px)] border-r shadow-[14px_0_40px_rgba(0,0,0,0.55)] ${

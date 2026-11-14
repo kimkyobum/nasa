@@ -502,114 +502,74 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
     const skirtMesh = new THREE.Mesh(skirtGeo, skirtMat);
     scene.add(skirtMesh);
 
-    // Bottom Slab Base + Holographic AR Radar Rings
-    const basePlatformGroup = new THREE.Group();
-    const basePlinthGeo = new THREE.BoxGeometry(TERRAIN_SIZE, 0.08, TERRAIN_SIZE);
-    const basePlinthMat = new THREE.MeshStandardMaterial({
-      color: 0x0b1220,
-      roughness: 0.45,
-      metalness: 0.72,
-    });
-    const basePlinth = new THREE.Mesh(basePlinthGeo, basePlinthMat);
-    basePlinth.position.y = SKIRT_BASE_Y - 0.04;
-    basePlatformGroup.add(basePlinth);
+    // Cute Chubby Character Generator (matching user reference image)
+    const createCuteCharacter = () => {
+      const group = new THREE.Group();
 
-    const outerRingGeo = new THREE.RingGeometry(7.2, 7.36, 64);
-    outerRingGeo.rotateX(-Math.PI / 2);
-    const outerRingMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.42,
-      side: THREE.DoubleSide,
-    });
-    const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
-    outerRing.position.y = SKIRT_BASE_Y - 0.02;
-    basePlatformGroup.add(outerRing);
+      const bodyGeo = new THREE.SphereGeometry(0.22, 20, 20);
+      bodyGeo.scale(1, 1.25, 0.9);
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0xdbeafe,
+        emissive: 0x93c5fd,
+        emissiveIntensity: 0.3,
+        roughness: 0.28,
+        metalness: 0.05,
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.24;
+      group.add(body);
 
-    const gridHelper = new THREE.GridHelper(16, 16, 0x0ea5e9, 0x1e293b);
-    gridHelper.position.y = SKIRT_BASE_Y - 0.05;
-    (gridHelper.material as THREE.Material).transparent = true;
-    (gridHelper.material as THREE.Material).opacity = 0.32;
-    basePlatformGroup.add(gridHelper);
+      const eyeGeo = new THREE.SphereGeometry(0.035, 14, 14);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
 
-    scene.add(basePlatformGroup);
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.075, 0.32, 0.17);
+      group.add(leftEye);
 
-    // 8. Composite 5-part AR Target Beacon
-    const beaconGroup = new THREE.Group();
-    const beaconContactGeo = new THREE.TorusGeometry(0.32, 0.022, 12, 32);
-    beaconContactGeo.rotateX(Math.PI / 2);
-    const beaconCyanMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 1.2,
-      roughness: 0.25,
-      metalness: 0.8,
-    });
-    const beaconContactRing = new THREE.Mesh(beaconContactGeo, beaconCyanMat);
-    beaconGroup.add(beaconContactRing);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.075, 0.32, 0.17);
+      group.add(rightEye);
 
-    const collarGeo = new THREE.CylinderGeometry(0.12, 0.2, 0.12, 16);
-    const collarMat = new THREE.MeshStandardMaterial({
-      color: 0xe2e8f0,
-      roughness: 0.28,
-      metalness: 0.88,
-    });
-    const collarMesh = new THREE.Mesh(collarGeo, collarMat);
-    collarMesh.position.y = 0.06;
-    beaconGroup.add(collarMesh);
+      const mouthGeo = new THREE.BoxGeometry(0.05, 0.035, 0.015);
+      const mouthMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+      const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+      mouth.position.set(0, 0.24, 0.19);
+      group.add(mouth);
 
-    const spireGeo = new THREE.CylinderGeometry(0.028, 0.048, 1.15, 16);
-    const spireMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.58,
-    });
-    const spireMesh = new THREE.Mesh(spireGeo, spireMat);
-    spireMesh.position.y = 0.66;
-    beaconGroup.add(spireMesh);
+      const stemCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, 0.5, 0),
+        new THREE.Vector3(0.05, 0.65, 0),
+        new THREE.Vector3(0.1, 0.72, 0)
+      );
+      const stemGeo = new THREE.TubeGeometry(stemCurve, 10, 0.014, 6, false);
+      const stemMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      group.add(stem);
 
-    const coreGeo = new THREE.OctahedronGeometry(0.2, 0);
-    const coreMat = new THREE.MeshStandardMaterial({
-      color: 0xbae6fd,
-      emissive: 0x38bdf8,
-      emissiveIntensity: 1.5,
-      roughness: 0.18,
-      metalness: 0.6,
-    });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-    coreMesh.position.y = 1.42;
-    beaconGroup.add(coreMesh);
+      const bulbGeo = new THREE.SphereGeometry(0.068, 16, 16);
+      const bulbMat = new THREE.MeshStandardMaterial({
+        color: 0x22c55e,
+        emissive: 0x22c55e,
+        emissiveIntensity: 2.0,
+        roughness: 0.15,
+      });
+      const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+      bulb.position.set(0.1, 0.72, 0);
+      group.add(bulb);
 
-    const haloGeo = new THREE.TorusGeometry(0.36, 0.016, 10, 32);
-    const haloMesh = new THREE.Mesh(haloGeo, beaconCyanMat);
-    haloMesh.position.y = 1.42;
-    haloMesh.rotation.x = Math.PI / 3;
-    beaconGroup.add(haloMesh);
+      const bulbLight = new THREE.PointLight(0x22c55e, 1.4, 4.0, 2);
+      bulbLight.position.set(0.1, 0.72, 0);
+      group.add(bulbLight);
 
-    const beaconLight = new THREE.PointLight(0x38bdf8, 1.3, 5.2, 2);
-    beaconLight.position.y = 1.4;
-    beaconGroup.add(beaconLight);
+      return group;
+    };
+
+    // 8. Cute Character Target Beacon
+    const beaconGroup = createCuteCharacter();
     scene.add(beaconGroup);
 
-    // 9. Automatic Traveling Rover / Arrow Marker along Route
-    const roverGroup = new THREE.Group();
-    const roverBodyGeo = new THREE.BoxGeometry(0.28, 0.12, 0.2);
-    const roverMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 1.2,
-      roughness: 0.2,
-      metalness: 0.8,
-    });
-    const roverBody = new THREE.Mesh(roverBodyGeo, roverMat);
-    roverBody.position.y = 0.08;
-    roverGroup.add(roverBody);
-
-    const roverMastGeo = new THREE.ConeGeometry(0.1, 0.35, 12);
-    roverMastGeo.rotateX(Math.PI / 2);
-    const roverMast = new THREE.Mesh(roverMastGeo, roverMat);
-    roverMast.position.set(0, 0.18, 0.12);
-    roverGroup.add(roverMast);
+    // 9. Cute Character Traveling Rover Marker along Route
+    const roverGroup = createCuteCharacter();
     scene.add(roverGroup);
 
     // 10. Street-View Style Blue Route Ribbon + Hover Cursor Disc
@@ -938,7 +898,7 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
         }
         if (currentChain.length >= 2) chains.push(currentChain);
 
-        const ribbonHalfWidth = 0.21;
+        const ribbonHalfWidth = 0.09;
         for (const chain of chains) {
           const dense: ClippedVertex[] = [];
           for (let i = 0; i < chain.length - 1; i++) {
@@ -1191,12 +1151,8 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
         stillAnimating = true;
       }
 
-      // 3. Automatically and smoothly travel rover along route from start to destination
+      // 3. Position rover and beacon at current travelProgress (static unless clicked)
       if (routeSamples.length > 0) {
-        // Advance travelProgress slowly (e.g. 22 seconds for full trip)
-        travelProgress += delta * 0.045;
-        if (travelProgress > 1) travelProgress = 0; // Loop seamlessly
-
         const sampleIdx = travelProgress * (routeSamples.length - 1);
         const s = getSampleAtFloat(sampleIdx);
         if (s) {
@@ -1304,8 +1260,7 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
         stateRef.current.cameraViewMode === 'orbit' &&
         !userDragging
       ) {
-        coreMesh.rotation.y += delta * 1.2;
-        haloMesh.rotation.z += delta * 1.7;
+        beaconGroup.rotation.y += delta * 1.0;
         stillAnimating = true;
       }
 
@@ -1707,21 +1662,6 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
       arWireMat.dispose();
       skirtGeo.dispose();
       skirtMat.dispose();
-      basePlinthGeo.dispose();
-      basePlinthMat.dispose();
-      outerRingGeo.dispose();
-      outerRingMat.dispose();
-      gridHelper.geometry.dispose();
-      (gridHelper.material as THREE.Material).dispose();
-      beaconContactGeo.dispose();
-      beaconCyanMat.dispose();
-      collarGeo.dispose();
-      collarMat.dispose();
-      spireGeo.dispose();
-      spireMat.dispose();
-      coreGeo.dispose();
-      coreMat.dispose();
-      haloGeo.dispose();
       envTarget.dispose();
       renderer.dispose();
       sceneHooksRef.current = null;
