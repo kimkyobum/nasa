@@ -502,74 +502,89 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
     const skirtMesh = new THREE.Mesh(skirtGeo, skirtMat);
     scene.add(skirtMesh);
 
-    // Cute Chubby Character Generator (matching user reference image)
-    const createCuteCharacter = () => {
+    // Sleek Sci-Fi Hologram Beacon Generator
+    const createSleekBeacon = () => {
       const group = new THREE.Group();
 
-      const bodyGeo = new THREE.SphereGeometry(0.22, 20, 20);
-      bodyGeo.scale(1, 1.25, 0.9);
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0xdbeafe,
-        emissive: 0x93c5fd,
-        emissiveIntensity: 0.3,
-        roughness: 0.28,
-        metalness: 0.05,
-      });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 0.24;
-      group.add(body);
+      const baseGeo = new THREE.BoxGeometry(0.18, 0.04, 0.18);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8, roughness: 0.2 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.02;
+      group.add(base);
 
-      const eyeGeo = new THREE.SphereGeometry(0.035, 14, 14);
-      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+      const postGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 12);
+      const postMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.6, transparent: true, opacity: 0.85 });
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.y = 0.32;
+      group.add(post);
 
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.075, 0.32, 0.17);
-      group.add(leftEye);
+      const diamondGeo = new THREE.OctahedronGeometry(0.07, 0);
+      const diamondMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, emissive: 0x38bdf8, emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.9 });
+      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+      diamond.position.y = 0.65;
+      group.add(diamond);
 
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.075, 0.32, 0.17);
-      group.add(rightEye);
-
-      const mouthGeo = new THREE.BoxGeometry(0.05, 0.035, 0.015);
-      const mouthMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
-      const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-      mouth.position.set(0, 0.24, 0.19);
-      group.add(mouth);
-
-      const stemCurve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(0, 0.5, 0),
-        new THREE.Vector3(0.05, 0.65, 0),
-        new THREE.Vector3(0.1, 0.72, 0)
-      );
-      const stemGeo = new THREE.TubeGeometry(stemCurve, 10, 0.014, 6, false);
-      const stemMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
-      const stem = new THREE.Mesh(stemGeo, stemMat);
-      group.add(stem);
-
-      const bulbGeo = new THREE.SphereGeometry(0.068, 16, 16);
-      const bulbMat = new THREE.MeshStandardMaterial({
-        color: 0x22c55e,
-        emissive: 0x22c55e,
-        emissiveIntensity: 2.0,
-        roughness: 0.15,
-      });
-      const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-      bulb.position.set(0.1, 0.72, 0);
-      group.add(bulb);
-
-      const bulbLight = new THREE.PointLight(0x22c55e, 1.4, 4.0, 2);
-      bulbLight.position.set(0.1, 0.72, 0);
-      group.add(bulbLight);
+      const ringGeo = new THREE.TorusGeometry(0.14, 0.008, 16, 32);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.65;
+      group.add(ring);
 
       return group;
     };
 
-    // 8. Cute Character Target Beacon
-    const beaconGroup = createCuteCharacter();
+    // Sleek Sci-Fi 6-Wheel Rover Generator
+    const createSciFiRover = () => {
+      const group = new THREE.Group();
+
+      const chassisGeo = new THREE.BoxGeometry(0.22, 0.09, 0.32);
+      const chassisMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+      const chassis = new THREE.Mesh(chassisGeo, chassisMat);
+      chassis.position.y = 0.09;
+      group.add(chassis);
+
+      const solarGeo = new THREE.BoxGeometry(0.2, 0.02, 0.28);
+      const solarMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.2, emissive: 0x0369a1, emissiveIntensity: 0.3 });
+      const solar = new THREE.Mesh(solarGeo, solarMat);
+      solar.position.set(0, 0.14, 0);
+      group.add(solar);
+
+      const wheelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+
+      [-0.12, 0, 0.12].forEach((zOffset) => {
+        const lw = new THREE.Mesh(wheelGeo, wheelMat);
+        lw.position.set(-0.14, 0.05, zOffset);
+        group.add(lw);
+
+        const rw = new THREE.Mesh(wheelGeo, wheelMat);
+        rw.position.set(0.14, 0.05, zOffset);
+        group.add(rw);
+      });
+
+      const mastGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8);
+      const mastMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+      const mast = new THREE.Mesh(mastGeo, mastMat);
+      mast.position.set(0, 0.23, -0.1);
+      group.add(mast);
+
+      const headGeo = new THREE.BoxGeometry(0.05, 0.04, 0.07);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6 });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.set(0, 0.32, -0.1);
+      group.add(head);
+
+      return group;
+    };
+
+    // 8. Sleek Target Beacon
+    const beaconGroup = createSleekBeacon();
     scene.add(beaconGroup);
 
-    // 9. Cute Character Traveling Rover Marker along Route
-    const roverGroup = createCuteCharacter();
+    // 9. Sleek Traveling Rover Marker along Route
+    const roverGroup = createSciFiRover();
     scene.add(roverGroup);
 
     // 10. Street-View Style Blue Route Ribbon + Hover Cursor Disc

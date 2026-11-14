@@ -1002,10 +1002,10 @@ export default function App() {
                 ? { width: '100vw' }
                 : { width: isDrawerOpen ? `${drawerWidthPx}px` : '0px' }
             }
-            className={`relative h-full overflow-hidden bg-[#0a111e]/78 backdrop-blur-md pointer-events-auto ${
+            className={`relative h-full overflow-hidden bg-[#0a111e]/35 backdrop-blur-2xl pointer-events-auto ${
               isPlaceFullscreen
                 ? 'w-screen border-r-0'
-                : `max-w-[calc(100vw-68px)] border-r shadow-[14px_0_40px_rgba(0,0,0,0.55)] ${
+                : `max-w-[calc(100vw-68px)] border-r border-white/20 shadow-[14px_0_40px_rgba(0,0,0,0.35)] ${
                     isResizingDrawer
                       ? 'transition-none'
                       : 'transition-[width,opacity,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
