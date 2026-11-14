@@ -1,0 +1,6 @@
+{
+  "name": "ARES-HYDRO Mars Explorer",
+  "description": "Mars subsurface groundwater, agriculture suitability, and AR spacesuit HUD navigation platform for NASA Space Apps Challenge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
