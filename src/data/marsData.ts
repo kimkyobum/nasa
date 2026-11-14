@@ -1,11 +1,18 @@
 import {
   FarmingStrategy,
+  FarmingTier,
   Landmark,
   MarsTelemetryPoint,
   NasaDatasetSpec,
   RegionId,
   RegionViewPreset,
 } from '../types/mars';
+import {
+  ALBA_GEOTHERMAL_LANDMARKS,
+  getAlbaObstacleAt,
+  sampleAlbaDemElevation,
+  sampleAlbaIceSolar,
+} from './albaArcadiaDataset';
 import marsLandmarksJson from './marsLandmarks.json';
 
 // Mars radius ~3,389.5 km -> ~59.16 km per degree
@@ -16,7 +23,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     id: 'global',
     nameKo: '화성 전체',
     nameEn: 'Global Mars',
-    subtitleKo: 'NASA Mars Trek 전구 위성 지도 (타르시스 · 엘리시움 · 유토피아 평원 통합 뷰)',
+    subtitleKo: 'NASA Mars Trek 전구 위성 지도 (EPSG:104905)',
     centerLat: 5,
     centerLon: 0,
     ppd: 3.6,
@@ -24,24 +31,72 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
   tharsis: {
     id: 'tharsis',
     nameKo: '타르시스 화산대',
-    nameEn: 'Tharsis Montes & Olympus',
-    subtitleKo: '거대 순상 화산군 주변 지열·빙하 용융 지하수 및 선상지 탐사 구역',
+    nameEn: 'Tharsis (MC-9/17)',
+    subtitleKo: '올림푸스 · 아르시아 · 파보니스 · 아스크라에우스 거대 순상 화산군',
     centerLat: 5.5,
-    centerLon: -117.0,
+    centerLon: -116.0,
     ppd: 14,
   },
   elysium: {
     id: 'elysium',
-    nameKo: '엘리시움 화산·평원',
-    nameEn: 'Elysium Mons & Utopia',
-    subtitleKo: '지하 얼음층(SWIM)과 대규모 고대 홍수 유로(Athabasca)가 만나는 수자원 핵심 구역',
-    centerLat: 26.0,
-    centerLon: 149.0,
+    nameKo: '엘리시움 평원',
+    nameEn: 'Elysium (MC-15)',
+    subtitleKo: '엘리시움 화산군 및 아타바스카 지하 얼음 유출로',
+    centerLat: 22.0,
+    centerLon: 152.0,
     ppd: 14,
+  },
+  arcadia: {
+    id: 'arcadia',
+    nameKo: '알바 · 아르카디아',
+    nameEn: 'Alba Mons & Arcadia (MC-2/3)',
+    subtitleKo: '열수 균열(HCl) 및 심도 0.2~2m 얕은 지하 빙하 밀집 전이 지대',
+    centerLat: 40.0,
+    centerLon: -110.0,
+    ppd: 52,
+  },
+  valles_marineris: {
+    id: 'valles_marineris',
+    nameKo: '마리너 계곡',
+    nameEn: 'Valles Marineris (MC-18)',
+    subtitleKo: '녹티스 라비린투스 ~ 코프라테스 카스마 대협곡 단층 지대',
+    centerLat: -10.5,
+    centerLon: -75.0,
+    ppd: 15,
+  },
+  utopia: {
+    id: 'utopia',
+    nameKo: '유토피아 평원',
+    nameEn: 'Utopia Planitia (MC-6/7)',
+    subtitleKo: '대규모 지하 빙하층(SWIM) 분포 북부 저지대 평원',
+    centerLat: 44.0,
+    centerLon: 105.0,
+    ppd: 12,
+  },
+  syrtis_isidis: {
+    id: 'syrtis_isidis',
+    nameKo: '시르티스 · 이시디스',
+    nameEn: 'Syrtis Major & Isidis (MC-13)',
+    subtitleKo: '예제로 분화구 및 닐리 포사이 점토 광물 지대',
+    centerLat: 15.0,
+    centerLon: 76.0,
+    ppd: 14,
+  },
+  hellas: {
+    id: 'hellas',
+    nameKo: '헬라스 분지',
+    nameEn: 'Hellas Basin (MC-28)',
+    subtitleKo: '남반구 최대 충돌 분지 및 높은 대기압 저지대',
+    centerLat: -42.5,
+    centerLon: 72.0,
+    ppd: 13,
   },
 };
 
-export const MARS_LANDMARKS: Landmark[] = marsLandmarksJson as Landmark[];
+export const MARS_LANDMARKS: Landmark[] = [
+  ...(marsLandmarksJson as Landmark[]),
+  ...ALBA_GEOTHERMAL_LANDMARKS,
+];
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -146,6 +201,11 @@ export function sampleElevationM(rawLat: number, rawLon: number): number {
   const lat = clamp(rawLat, -89.5, 89.5);
   const lon = normalizeLon(rawLon);
 
+  const albaElev = sampleAlbaDemElevation(lat, lon);
+  if (albaElev !== null) {
+    return Math.round(albaElev);
+  }
+
   // Martian hemisphere dichotomy: northern lowlands (-3500m), southern highlands (+1800m)
   let elev = lat > 15 ? -3200 : lat < -10 ? 1800 : -400 - lat * 80;
 
@@ -220,6 +280,89 @@ export function sampleElevationM(rawLat: number, rawLon: number): number {
   }
 
   return Math.round(elev);
+}
+
+export function evaluateFarmingTier(
+  elev: number,
+  slopeDeg: number,
+  combinedWaterProb: number,
+  soilFertility: number,
+  isObstacle: boolean,
+  roughnessHazard: number
+): {
+  recommendedStrategy: FarmingStrategy;
+  farmingTier: FarmingTier;
+  farmingLabelKo: string;
+  farmingSolutionKo: string;
+  tierCode: 0 | 1 | 2 | 3 | 4;
+} {
+  // 0: 갈색 (진입·생존·농업 절대 불가 극위험 구역)
+  if (isObstacle || slopeDeg >= 20.0 || elev >= 14000 || roughnessHazard >= 86) {
+    return {
+      recommendedStrategy: 'explore_only',
+      farmingTier: 'lethal',
+      farmingLabelKo: '진입 극위험',
+      farmingSolutionKo:
+        '절벽·칼데라·극한 경사로 인해 로버 전복 및 생존 위협이 높아 진입과 농업이 불가능합니다.',
+      tierCode: 0,
+    };
+  }
+
+  // 1: 빨강 (무슨 짓을 해도 농업 불가: 극고지대 저기압 / 급경사 / 극건조)
+  if (slopeDeg >= 13.5 || elev >= 8500 || combinedWaterProb < 24) {
+    return {
+      recommendedStrategy: 'explore_only',
+      farmingTier: 'unsuitable',
+      farmingLabelKo: '농업 불가',
+      farmingSolutionKo:
+        '수분 부족·고지대 저기압·가파른 경사로 온실 설치가 어렵습니다. 인근 저지대 평원 이동을 권장합니다.',
+      tierCode: 1,
+    };
+  }
+
+  // 4: 파랑 (최상: 완만한 저지대 평지 + 풍부한 지하수 + 비옥한 점토 토양)
+  if (
+    slopeDeg < 6.5 &&
+    elev < 2500 &&
+    combinedWaterProb >= 55 &&
+    soilFertility >= 60
+  ) {
+    return {
+      recommendedStrategy: 'direct_soil',
+      farmingTier: 'optimal',
+      farmingLabelKo: '농업 최상',
+      farmingSolutionKo:
+        '풍부한 지하 얼음과 비옥한 점토 토양·평지가 결합된 최적지입니다. 가압 비닐하우스 설치만으로 현지 토양 재배가 가능합니다.',
+      tierCode: 4,
+    };
+  }
+
+  // 3: 초록 (적합: 비닐하우스 + 간단한 과염소산염 세척/개량으로 현지 토양 재배 가능)
+  if (
+    slopeDeg < 10.0 &&
+    elev < 5800 &&
+    combinedWaterProb >= 40 &&
+    soilFertility >= 45
+  ) {
+    return {
+      recommendedStrategy: 'direct_soil',
+      farmingTier: 'suitable',
+      farmingLabelKo: '농업 적합',
+      farmingSolutionKo:
+        '가압 비닐하우스를 세우고 지하 해빙수로 과염소산염을 씻어내며 퇴비를 섞으면 현지 토양에서도 안정적으로 농사를 지을 수 있습니다.',
+      tierCode: 3,
+    };
+  }
+
+  // 2: 노랑~주황 (노력해서라도 농사 가능성 있음: 밀폐 비닐하우스 + 지구 흙 수경재배)
+  return {
+    recommendedStrategy: 'earth_soil_hydro',
+    farmingTier: 'possible',
+    farmingLabelKo: '농업 가능성 있음',
+    farmingSolutionKo:
+      '현지 토양은 척박하지만 가압 비닐하우스(밀폐 온실)를 세워 지구 흙과 양액을 투입하고 지하 얼음 해빙수를 끌어오면 충분히 농사를 지을 수 있습니다.',
+    tierCode: 2,
+  };
 }
 
 export function sampleMarsTelemetry(
@@ -346,21 +489,52 @@ export function sampleMarsTelemetry(
 
   const finalSwim = clamp(Math.round(swimIceProb), 4, 97);
   const finalGamma = clamp(Math.round(gammaHydrogen), 6, 95);
-  const combinedWaterProb = clamp(
+
+  const albaIce = sampleAlbaIceSolar(lat, lon);
+  const albaObs = getAlbaObstacleAt(lat, lon);
+
+  let combinedWaterProb = clamp(
     Math.round(finalSwim * 0.56 + finalGamma * 0.29 + finalGeo * 0.15),
     5,
     96
   );
 
-  const finalSoil = clamp(Math.round(soilFertility), 5, 94);
-  const roughnessHazard = clamp(
-    Math.round(effectiveSlope * 2.4 + n2 * 28 + (finalGeo > 75 ? 16 : 0)),
+  let finalSoil = clamp(Math.round(soilFertility), 5, 94);
+
+  if (albaIce) {
+    combinedWaterProb = clamp(
+      Math.round(albaIce.waterIceWtPct * 0.72 + finalGeo * 0.28),
+      8,
+      96
+    );
+    // Higher perchlorate slightly lowers direct soil suitability
+    finalSoil = clamp(
+      Math.round(finalSoil - (albaIce.perchlorateRiskPct - 0.5) * 28),
+      8,
+      92
+    );
+  }
+
+  let effectiveSlopeFinal = effectiveSlope;
+  let roughnessHazard = clamp(
+    Math.round(effectiveSlopeFinal * 2.4 + n2 * 28 + (finalGeo > 75 ? 16 : 0)),
     4,
     98
   );
-  const isObstacle = effectiveSlope >= 18.5;
+  let isObstacle = effectiveSlopeFinal >= 18.5;
 
-  const flatBonus = clamp((10 - effectiveSlope) * 5, 0, 40);
+  if (albaObs) {
+    if (albaObs.hazardLevel === 'CRITICAL') {
+      isObstacle = true;
+      effectiveSlopeFinal = Math.max(effectiveSlopeFinal, albaObs.maxSlopeDeg);
+      roughnessHazard = 96;
+    } else {
+      effectiveSlopeFinal = Math.max(effectiveSlopeFinal, Math.min(17.2, albaObs.maxSlopeDeg));
+      roughnessHazard = Math.max(roughnessHazard, albaObs.hazardLevel === 'HIGH' ? 78 : 56);
+    }
+  }
+
+  const flatBonus = clamp((10 - effectiveSlopeFinal) * 5, 0, 40);
   const elevAtmBonus = clamp((4000 - elev) / 220, 0, 32);
   const farmingScore = clamp(
     Math.round(
@@ -374,21 +548,21 @@ export function sampleMarsTelemetry(
     96
   );
 
-  let recommendedStrategy: FarmingStrategy = 'explore_only';
-  if (effectiveSlope < 9.5 && elev < 5800 && combinedWaterProb >= 48) {
-    if (finalSoil >= 56 && farmingScore >= 60) {
-      recommendedStrategy = 'direct_soil';
-    } else {
-      recommendedStrategy = 'earth_soil_hydro';
-    }
-  }
+  const evalRes = evaluateFarmingTier(
+    elev,
+    effectiveSlopeFinal,
+    combinedWaterProb,
+    finalSoil,
+    isObstacle,
+    roughnessHazard
+  );
 
   return {
     lat: Number(lat.toFixed(2)),
     lon: Number(lon.toFixed(2)),
     elevationM: elev,
-    slopeDeg: effectiveSlope,
-    swimIceProb: finalSwim,
+    slopeDeg: effectiveSlopeFinal,
+    swimIceProb: albaIce ? Math.round(albaIce.waterIceWtPct) : finalSwim,
     gammaHydrogen: finalGamma,
     geothermalIndex: finalGeo,
     soilFertility: finalSoil,
@@ -396,7 +570,19 @@ export function sampleMarsTelemetry(
     isObstacle,
     combinedWaterProb,
     farmingScore,
-    recommendedStrategy,
+    recommendedStrategy: evalRes.recommendedStrategy,
+    farmingTier: evalRes.farmingTier,
+    farmingLabelKo: evalRes.farmingLabelKo,
+    farmingSolutionKo: evalRes.farmingSolutionKo,
+    iceDepthM: albaIce?.iceDepthM,
+    solarFluxWm2: albaIce?.solarFluxWm2,
+    daylightHours: albaIce?.daylightHours,
+    perchloratePct: albaIce?.perchlorateRiskPct,
+    albaHazardPenalty:
+      albaObs && albaObs.hazardLevel !== 'CRITICAL'
+        ? albaObs.routingPenalty
+        : undefined,
+    albaHazardName: albaObs?.name,
   };
 }
 
@@ -410,6 +596,7 @@ export interface GlobalTelemetryAtlas {
   elevM: Int16Array;
   geo: Uint8Array;
   slopeX10: Uint16Array;
+  farmingTierCode: Uint8Array;
 }
 
 let cachedAtlas: GlobalTelemetryAtlas | null = null;
@@ -417,8 +604,8 @@ let cachedAtlas: GlobalTelemetryAtlas | null = null;
 export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
   if (cachedAtlas) return cachedAtlas;
 
-  const width = 432; // ~0.83 deg/px longitude (-180..180)
-  const height = 204; // ~0.83 deg/px latitude (+85..-85)
+  const width = 540; // ~0.67 deg/px longitude (-180..180)
+  const height = 255; // ~0.67 deg/px latitude (+85..-85)
   const latMax = 85;
   const latMin = -85;
   const total = width * height;
@@ -428,6 +615,7 @@ export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
   const elevM = new Int16Array(total);
   const geo = new Uint8Array(total);
   const slopeX10 = new Uint16Array(total);
+  const farmingTierCode = new Uint8Array(total);
 
   for (let y = 0; y < height; y++) {
     const lat = latMax - ((y + 0.5) / height) * (latMax - latMin);
@@ -441,10 +629,31 @@ export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
       elevM[idx] = clamp(pt.elevationM, -10000, 24000);
       geo[idx] = pt.geothermalIndex;
       slopeX10[idx] = Math.round(pt.slopeDeg * 10);
+      farmingTierCode[idx] =
+        pt.farmingTier === 'optimal'
+          ? 4
+          : pt.farmingTier === 'suitable'
+            ? 3
+            : pt.farmingTier === 'possible'
+              ? 2
+              : pt.farmingTier === 'unsuitable'
+                ? 1
+                : 0;
     }
   }
 
-  cachedAtlas = { width, height, latMin, latMax, water, soil, elevM, geo, slopeX10 };
+  cachedAtlas = {
+    width,
+    height,
+    latMin,
+    latMax,
+    water,
+    soil,
+    elevM,
+    geo,
+    slopeX10,
+    farmingTierCode,
+  };
   return cachedAtlas;
 }
 

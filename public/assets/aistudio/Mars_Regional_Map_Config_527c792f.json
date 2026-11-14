@@ -1,0 +1,888 @@
+{
+  "title": "Mars regional map configuration",
+  "coordinateOrder": [
+    "west",
+    "south",
+    "east",
+    "north"
+  ],
+  "longitudeConvention": "east-positive; app display convention -180..180 unless specified",
+  "latitudeConvention": "planetocentric; USGS Gazetteer treats Mars as spherical for this coordinate distinction",
+  "projection": {
+    "equirectangular": "EPSG:104905",
+    "polar": "Use NASA TREK North Pole or South Pole WMTS service and its advertised tile matrix; do not apply the EQ pixel formula."
+  },
+  "basemaps": {
+    "mola_hrsc": {
+      "layerId": "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw",
+      "capabilities": "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw/1.0.0/WMTSCapabilities.xml"
+    },
+    "mola_fallback": {
+      "layerId": "Mars_MGS_MOLA_ClrShade_merge_global_463m",
+      "capabilities": "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/WMTSCapabilities.xml"
+    },
+    "ctx": {
+      "note": "Use regional CTX mosaics only after checking actual layer ID, BBOX, WMTS endpoint and data coverage in the NASA TREK API catalog."
+    }
+  },
+  "quadrangles": [
+    {
+      "id": "MC-1",
+      "name": "Mare Boreum",
+      "bbox": [
+        -180,
+        65,
+        180,
+        90
+      ],
+      "projection": "polar-north"
+    },
+    {
+      "id": "MC-2",
+      "name": "Diacria",
+      "bbox": [
+        -180,
+        30,
+        -120,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-3",
+      "name": "Arcadia",
+      "bbox": [
+        -120,
+        30,
+        -60,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-4",
+      "name": "Mare Acidalium",
+      "bbox": [
+        -60,
+        30,
+        0,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-5",
+      "name": "Ismenius Lacus",
+      "bbox": [
+        0,
+        30,
+        60,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-6",
+      "name": "Casius",
+      "bbox": [
+        60,
+        30,
+        120,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-7",
+      "name": "Cebrenia",
+      "bbox": [
+        120,
+        30,
+        180,
+        65
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-8",
+      "name": "Amazonis",
+      "bbox": [
+        -180,
+        0,
+        -135,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-9",
+      "name": "Tharsis",
+      "bbox": [
+        -135,
+        0,
+        -90,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-10",
+      "name": "Lunae Palus",
+      "bbox": [
+        -90,
+        0,
+        -45,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-11",
+      "name": "Oxia Palus",
+      "bbox": [
+        -45,
+        0,
+        0,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-12",
+      "name": "Arabia",
+      "bbox": [
+        0,
+        0,
+        45,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-13",
+      "name": "Syrtis Major",
+      "bbox": [
+        45,
+        0,
+        90,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-14",
+      "name": "Amenthes",
+      "bbox": [
+        90,
+        0,
+        135,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-15",
+      "name": "Elysium",
+      "bbox": [
+        135,
+        0,
+        180,
+        30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-16",
+      "name": "Memnonia",
+      "bbox": [
+        -180,
+        -30,
+        -135,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-17",
+      "name": "Phoenicis Lacus",
+      "bbox": [
+        -135,
+        -30,
+        -90,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-18",
+      "name": "Coprates",
+      "bbox": [
+        -90,
+        -30,
+        -45,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-19",
+      "name": "Margaritifer Sinus",
+      "bbox": [
+        -45,
+        -30,
+        0,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-20",
+      "name": "Sinus Sabaeus",
+      "bbox": [
+        0,
+        -30,
+        45,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-21",
+      "name": "Iapygia",
+      "bbox": [
+        45,
+        -30,
+        90,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-22",
+      "name": "Mare Tyrrhenum",
+      "bbox": [
+        90,
+        -30,
+        135,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-23",
+      "name": "Aeolis",
+      "bbox": [
+        135,
+        -30,
+        180,
+        0
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-24",
+      "name": "Phaethontis",
+      "bbox": [
+        -180,
+        -65,
+        -120,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-25",
+      "name": "Thaumasia",
+      "bbox": [
+        -120,
+        -65,
+        -60,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-26",
+      "name": "Argyre",
+      "bbox": [
+        -60,
+        -65,
+        0,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-27",
+      "name": "Noachis",
+      "bbox": [
+        0,
+        -65,
+        60,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-28",
+      "name": "Hellas",
+      "bbox": [
+        60,
+        -65,
+        120,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-29",
+      "name": "Eridania",
+      "bbox": [
+        120,
+        -65,
+        180,
+        -30
+      ],
+      "projection": "equirectangular"
+    },
+    {
+      "id": "MC-30",
+      "name": "Mare Australe",
+      "bbox": [
+        -180,
+        -90,
+        180,
+        -65
+      ],
+      "projection": "polar-south"
+    }
+  ],
+  "viewRegions": [
+    {
+      "id": "north_polar",
+      "label": "북극권",
+      "bbox": [
+        -180,
+        65,
+        180,
+        90
+      ],
+      "projection": "North Pole service",
+      "features": [
+        "Planum Boreum",
+        "Vastitas Borealis",
+        "Chasma Boreale"
+      ]
+    },
+    {
+      "id": "acidalia_north_lowlands",
+      "label": "아시달리아·북부 저지대",
+      "bbox": [
+        -60,
+        30,
+        0,
+        65
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Acidalia Planitia",
+        "Chryse Planitia"
+      ]
+    },
+    {
+      "id": "arcadia",
+      "label": "아르카디아",
+      "bbox": [
+        -180,
+        25,
+        -120,
+        65
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Arcadia Planitia",
+        "Tempe Terra"
+      ]
+    },
+    {
+      "id": "amazonis",
+      "label": "아마조니스",
+      "bbox": [
+        -180,
+        0,
+        -135,
+        30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Amazonis Planitia"
+      ]
+    },
+    {
+      "id": "utopia",
+      "label": "유토피아",
+      "bbox": [
+        60,
+        0,
+        135,
+        65
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Utopia Planitia"
+      ]
+    },
+    {
+      "id": "arabia",
+      "label": "아라비아",
+      "bbox": [
+        0,
+        -20,
+        60,
+        35
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Arabia Terra",
+        "Terra Sabaea"
+      ]
+    },
+    {
+      "id": "xanthe_chryse",
+      "label": "잔테·크리세",
+      "bbox": [
+        -85,
+        0,
+        -10,
+        40
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Xanthe Terra",
+        "Chryse Planitia",
+        "Ares Vallis",
+        "Mawrth Vallis",
+        "Kasei Valles"
+      ]
+    },
+    {
+      "id": "lunae",
+      "label": "루나이",
+      "bbox": [
+        -90,
+        0,
+        -45,
+        30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Lunae Planum"
+      ]
+    },
+    {
+      "id": "meridiani_margaritifer",
+      "label": "메리디아니·마르가리티페르",
+      "bbox": [
+        -45,
+        -30,
+        10,
+        10
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Meridiani Planum",
+        "Margaritifer Terra"
+      ]
+    },
+    {
+      "id": "lucus",
+      "label": "루쿠스",
+      "bbox": [
+        -180,
+        -30,
+        -135,
+        5
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Lucus Planum"
+      ]
+    },
+    {
+      "id": "syrtis_isidis",
+      "label": "시르티스·이시디스",
+      "bbox": [
+        45,
+        -5,
+        120,
+        35
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Syrtis Major Planum",
+        "Isidis Planitia",
+        "Nili Fossae",
+        "Libya Montes",
+        "Amenthes Fossae"
+      ]
+    },
+    {
+      "id": "tharsis",
+      "label": "타르시스",
+      "bbox": [
+        -140,
+        -30,
+        -90,
+        50
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Tharsis Montes",
+        "Tharsis Planum",
+        "Olympus Mons",
+        "Alba Mons",
+        "Arsia Mons",
+        "Pavonis Mons",
+        "Ascraeus Mons"
+      ]
+    },
+    {
+      "id": "valles_marineris",
+      "label": "마리너 계곡",
+      "bbox": [
+        -110,
+        -20,
+        -40,
+        0
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Noctis Labyrinthus",
+        "Tithonium Chasma",
+        "Ius Chasma",
+        "Ophir Chasma",
+        "Candor Chasma",
+        "Melas Chasma",
+        "Coprates Chasma",
+        "Ganges Chasma",
+        "Capri Chasma",
+        "Eos Chasma",
+        "Juventae Chasma",
+        "Hebes Chasma"
+      ]
+    },
+    {
+      "id": "elysium",
+      "label": "엘리시움",
+      "bbox": [
+        130,
+        0,
+        180,
+        40
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Elysium Mons",
+        "Hecates Tholus",
+        "Albor Tholus",
+        "Elysium Fossae",
+        "Cerberus Fossae",
+        "Athabasca Valles",
+        "Marte Vallis",
+        "Grjota Valles",
+        "Phlegra Dorsa",
+        "Galaxias Fossae"
+      ]
+    },
+    {
+      "id": "noachis_argyre",
+      "label": "노아키스·아르기레",
+      "bbox": [
+        -60,
+        -65,
+        60,
+        -30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Noachis Terra",
+        "Argyre Planitia",
+        "Aonia Terra"
+      ]
+    },
+    {
+      "id": "cimmeria_eridania",
+      "label": "키메리아·에리다니아",
+      "bbox": [
+        120,
+        -65,
+        180,
+        -30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Terra Cimmeria",
+        "Eridania"
+      ]
+    },
+    {
+      "id": "sirenum",
+      "label": "시레눔",
+      "bbox": [
+        -180,
+        -65,
+        -120,
+        -30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Terra Sirenum"
+      ]
+    },
+    {
+      "id": "thaumasia_icaria",
+      "label": "타우마시아·이카리아",
+      "bbox": [
+        -120,
+        -65,
+        -60,
+        -30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Thaumasia Planum",
+        "Icaria Planum",
+        "Icaria Fossae",
+        "Bosporos Planum"
+      ]
+    },
+    {
+      "id": "hellas",
+      "label": "헬라스",
+      "bbox": [
+        60,
+        -80,
+        120,
+        -30
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Hellas Planitia",
+        "Promethei Terra",
+        "Malea Planum"
+      ]
+    },
+    {
+      "id": "hesperia_tyrrhena",
+      "label": "헤스페리아·티레나",
+      "bbox": [
+        90,
+        -30,
+        135,
+        0
+      ],
+      "projection": "EPSG:104905",
+      "features": [
+        "Hesperia Planum",
+        "Tyrrhena Terra"
+      ]
+    },
+    {
+      "id": "south_polar",
+      "label": "남극권",
+      "bbox": [
+        -180,
+        -90,
+        180,
+        -65
+      ],
+      "projection": "South Pole service",
+      "features": [
+        "Planum Australe",
+        "Sisyphi Planum",
+        "Malea Planum"
+      ]
+    }
+  ],
+  "majorFeaturesByGroup": {
+    "northern_lowlands": [
+      "Vastitas Borealis",
+      "Planum Boreum",
+      "Acidalia Planitia",
+      "Arcadia Planitia",
+      "Amazonis Planitia",
+      "Utopia Planitia",
+      "Chryse Planitia",
+      "Tempe Terra",
+      "Olympia Planum",
+      "Elysium Planitia"
+    ],
+    "equatorial_central": [
+      "Arabia Terra",
+      "Xanthe Terra",
+      "Lunae Planum",
+      "Isidis Planitia",
+      "Syrtis Major Planum",
+      "Meridiani Planum",
+      "Margaritifer Terra",
+      "Lucus Planum",
+      "Ophir Planum",
+      "Terra Sabaea",
+      "Tyrrhena Terra"
+    ],
+    "tharsis_and_valles": [
+      "Tharsis Montes",
+      "Tharsis Planum",
+      "Syria Planum",
+      "Aurorae Planum",
+      "Daedalia Planum",
+      "Solis Planum",
+      "Sinai Planum",
+      "Thaumasia Planum",
+      "Bosporos Planum",
+      "Valles Marineris"
+    ],
+    "southern_highlands": [
+      "Noachis Terra",
+      "Terra Cimmeria",
+      "Terra Sirenum",
+      "Aonia Terra",
+      "Argyre Planitia",
+      "Hellas Planitia",
+      "Promethei Terra",
+      "Icaria Planum",
+      "Hesperia Planum",
+      "Planum Australe",
+      "Malea Planum",
+      "Sisyphi Planum"
+    ]
+  },
+  "detailedFeatureLists": {
+    "tharsis_volcanoes": [
+      "Olympus Mons",
+      "Alba Mons",
+      "Arsia Mons",
+      "Pavonis Mons",
+      "Ascraeus Mons",
+      "Tharsis Tholus",
+      "Ceraunius Tholus",
+      "Uranius Mons",
+      "Jovis Tholus",
+      "Biblis Patera",
+      "Ulysses Patera",
+      "Alba Patera"
+    ],
+    "tharsis_rifts": [
+      "Noctis Labyrinthus",
+      "Claritas Fossae",
+      "Tempe Fossae",
+      "Mareotis Fossae"
+    ],
+    "valles_marineris": [
+      "Noctis Labyrinthus",
+      "Tithonium Chasma",
+      "Ius Chasma",
+      "Ophir Chasma",
+      "Candor Chasma",
+      "Melas Chasma",
+      "Coprates Chasma",
+      "Ganges Chasma",
+      "Capri Chasma",
+      "Eos Chasma",
+      "Juventae Chasma",
+      "Hebes Chasma"
+    ],
+    "elysium": [
+      "Elysium Mons",
+      "Hecates Tholus",
+      "Albor Tholus",
+      "Elysium Fossae",
+      "Cerberus Fossae",
+      "Athabasca Valles",
+      "Marte Vallis",
+      "Grjota Valles",
+      "Phlegra Dorsa",
+      "Galaxias Fossae"
+    ],
+    "north_polar": [
+      "Planum Boreum",
+      "Chasma Boreale",
+      "Olympia Planum",
+      "Olympia Undae",
+      "Olympia Rupes",
+      "Olympia Cavi",
+      "Abalos Undae",
+      "Boreales Scopuli",
+      "Gemina Lingula",
+      "Hyperboreae Undae"
+    ],
+    "arabia_chryse_valleys": [
+      "Ares Vallis",
+      "Tiu Valles",
+      "Simud Valles",
+      "Shalbatana Valles",
+      "Mawrth Vallis",
+      "Kasei Valles",
+      "Maja Valles",
+      "Naktong Vallis",
+      "Scamander Vallis",
+      "Indus Vallis"
+    ],
+    "crater_candidates_check_location_individually": [
+      "Arago Crater",
+      "Capen Crater",
+      "Cassini Crater",
+      "Gill Crater",
+      "Henry Crater",
+      "Janssen Crater",
+      "Pasteur Crater",
+      "Teisserenc de Bort Crater",
+      "Tikhonravov Crater",
+      "Tuscaloosa Crater"
+    ],
+    "syrtis_isidis": [
+      "Isidis Planitia",
+      "Syrtis Major Planum",
+      "Nili Fossae",
+      "Libya Montes",
+      "Nepenthes Mensae",
+      "Terra Sabaea",
+      "Tyrrhena Terra",
+      "Hesperia Planum",
+      "Amenthes Fossae"
+    ],
+    "southern_highlands": [
+      "Planum Australe",
+      "Malea Planum",
+      "Sisyphi Planum",
+      "Promethei Terra",
+      "Terra Cimmeria",
+      "Terra Sirenum",
+      "Noachis Terra",
+      "Aonia Terra",
+      "Argyre Planitia",
+      "Hellas Planitia",
+      "Charitum Montes",
+      "Hellespontus Montes",
+      "Icaria Fossae",
+      "Eridania"
+    ]
+  },
+  "validationRules": [
+    "Regional view BBOX is an exploratory viewport, not the exact boundary of each feature.",
+    "Use the USGS Gazetteer KML/Shapefile geometry for individual named-feature boundaries.",
+    "Convert USGS longitudes 0..360 to -180..180 only for app display; preserve source coordinates separately.",
+    "Read WMTS style, matrix set, matrix identifiers, row/column scheme and image extension from GetCapabilities.",
+    "Use polar WMTS services for MC-1 and MC-30."
+  ],
+  "officialSources": {
+    "nasaTrekWmts": "https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars",
+    "usgsMarsGazetteer": "https://planetarynames.wr.usgs.gov/SearchResults?Target=20_Mars",
+    "usgsGisDownloads": "https://planetarynames.wr.usgs.gov/GIS_Downloads",
+    "quadrangleIndex": "https://planetarymapping.elte.hu/map-catalog/quadrangles/",
+    "olympiaPlanitiaDropped": "https://planetarynames.wr.usgs.gov/Feature/6881",
+    "olympiaPlanum": "https://planetarynames.wr.usgs.gov/Feature/14281",
+    "alborTholus": "https://planetarynames.wr.usgs.gov/Feature/166",
+    "grjotaValles": "https://planetarynames.wr.usgs.gov/Feature/2257"
+  }
+}

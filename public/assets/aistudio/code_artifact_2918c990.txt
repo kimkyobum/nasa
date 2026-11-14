@@ -1,0 +1,478 @@
+================================================================================
+NASA SPACE APPS CHALLENGE - MARS HABITAT & NAVIGATION EXTENDED DATASET (v2.0)
+Target Region: Alba Mons & Arcadia Transition Zone (Lat: 37.0°N ~ 43.0°N, Lon: 247.0°E ~ 253.0°E)
+Reference Datum: Mars 2000 IAU / MOLA Areoid (Elevation in meters)
+================================================================================
+
+--------------------------------------------------------------------------------
+[SECTION 1] VOLCANIC & GEOTHERMAL SITES (화산, 지열 및 가스 분출 후보지 데이터)
+Format: JSON Object
+Description: ESA TGO 염화수소(HCl)/메탄 검출 구역 및 잔류 지열 가능성이 높은 정착 후보 거점 (총 8개소)
+--------------------------------------------------------------------------------
+{
+  "geothermal_sites": [
+    {
+      "site_id": "GEO-001",
+      "name": "Alba Mons North Fissure Zone",
+      "region_type": "Volcanic Fissure",
+      "lat": 41.25,
+      "lon": 249.80,
+      "elevation_m": 4120,
+      "hcl_emission_ppb": 3.8,
+      "thermal_anomaly_k": 4.2,
+      "estimated_subsurface_temp_c": -12.5,
+      "volcanic_activity_status": "Dormant / Seasonal Gas Seepage",
+      "settlement_viability_score": 91,
+      "notes": "초여름 계절성 염화수소 방출 포착 지점. 지하 열수 및 얼음 융해 가능성 최상."
+    },
+    {
+      "site_id": "GEO-002",
+      "name": "Alba Fossae East Graben",
+      "region_type": "Tectonic Graben",
+      "lat": 39.80,
+      "lon": 251.10,
+      "elevation_m": 3450,
+      "hcl_emission_ppb": 1.4,
+      "thermal_anomaly_k": 2.1,
+      "estimated_subsurface_temp_c": -24.0,
+      "volcanic_activity_status": "Inactive Fissure",
+      "settlement_viability_score": 78,
+      "notes": "단층 균열 지대로 지열 추출 및 지하 용암 튜브(방사선 차폐 거주지) 활용 유리."
+    },
+    {
+      "site_id": "GEO-003",
+      "name": "Ceraunius Fossae Northern Ridge",
+      "region_type": "Volcanic Ridge",
+      "lat": 38.40,
+      "lon": 248.90,
+      "elevation_m": 2890,
+      "hcl_emission_ppb": 0.5,
+      "thermal_anomaly_k": 0.8,
+      "estimated_subsurface_temp_c": -35.2,
+      "volcanic_activity_status": "Extinct",
+      "settlement_viability_score": 65,
+      "notes": "완만한 경사도와 안정적인 지반을 보유한 초기 착륙 및 물류 전초기지 후보."
+    },
+    {
+      "site_id": "GEO-004",
+      "name": "Alba Caldera Rim South",
+      "region_type": "Caldera Rim",
+      "lat": 40.45,
+      "lon": 249.95,
+      "elevation_m": 6420,
+      "hcl_emission_ppb": 2.9,
+      "thermal_anomaly_k": 3.5,
+      "estimated_subsurface_temp_c": -16.8,
+      "volcanic_activity_status": "Dormant",
+      "settlement_viability_score": 72,
+      "notes": "지열 잠재력은 높으나 고도가 높아 기압이 낮고 접근 경사가 가파름."
+    },
+    {
+      "site_id": "GEO-005",
+      "name": "Arcadia-Alba Thermal Basin",
+      "region_type": "Transition Plain",
+      "lat": 42.30,
+      "lon": 248.20,
+      "elevation_m": 2150,
+      "hcl_emission_ppb": 1.9,
+      "thermal_anomaly_k": 2.7,
+      "estimated_subsurface_temp_c": -19.4,
+      "volcanic_activity_status": "Residual Heat Zone",
+      "settlement_viability_score": 89,
+      "notes": "얕은 지하 빙하층과 화산 잔류 열원이 만나는 지점. 대규모 수자원 채굴 최적지."
+    },
+    {
+      "site_id": "GEO-006",
+      "name": "Tantalus North Vent",
+      "region_type": "Hydrothermal Vent Candidate",
+      "lat": 41.80,
+      "lon": 251.90,
+      "elevation_m": 3780,
+      "hcl_emission_ppb": 3.1,
+      "thermal_anomaly_k": 3.8,
+      "estimated_subsurface_temp_c": -14.1,
+      "volcanic_activity_status": "Dormant / Gas Seepage",
+      "settlement_viability_score": 84,
+      "notes": "과거 열수 분출 흔적(규산염 퇴적물) 다수 분포. 외계 미생물 화석 탐사 1순위."
+    },
+    {
+      "site_id": "GEO-007",
+      "name": "Uranius North Outflow Channel",
+      "region_type": "Ancient Lava/Water Channel",
+      "lat": 37.50,
+      "lon": 250.40,
+      "elevation_m": 2410,
+      "hcl_emission_ppb": 0.3,
+      "thermal_anomaly_k": 0.5,
+      "estimated_subsurface_temp_c": -38.0,
+      "volcanic_activity_status": "Extinct",
+      "settlement_viability_score": 68,
+      "notes": "일조량이 풍부하여 대형 태양광 발전 단지 건설에 최적화된 평탄 지형."
+    },
+    {
+      "site_id": "GEO-008",
+      "name": "Western Alba Lava Tube Complex",
+      "region_type": "Subsurface Lava Tube",
+      "lat": 40.10,
+      "lon": 247.60,
+      "elevation_m": 3120,
+      "hcl_emission_ppb": 1.1,
+      "thermal_anomaly_k": 1.6,
+      "estimated_subsurface_temp_c": -21.0,
+      "volcanic_activity_status": "Inactive",
+      "settlement_viability_score": 82,
+      "notes": "붕괴된 천장(Skylight) 확인 구역. 우주 방사선 및 모래폭풍 완벽 차폐 가능."
+    }
+  ]
+}
+
+--------------------------------------------------------------------------------
+[SECTION 2] SUBSURFACE ICE & SOLAR IRRADIANCE GRID (지하 얼음 함량 및 태양광 에너지 데이터)
+Format: CSV (Comma-Separated Values)
+Columns: grid_id, lat, lon, ice_depth_m, water_ice_wt_pct, daylight_hours, solar_flux_wm2, perchlorate_risk_pct
+Description: NASA Mars Odyssey GRS / SHARAD 레이더 기반 지하 수분 및 위도별 일조량 데이터 (36개 격자)
+--------------------------------------------------------------------------------
+grid_id,lat,lon,ice_depth_m,water_ice_wt_pct,daylight_hours,solar_flux_wm2,perchlorate_risk_pct
+G-01,37.5,247.5,2.2,18.4,12.1,422.5,0.68
+G-02,37.5,248.5,2.0,20.1,12.1,422.1,0.66
+G-03,37.5,249.5,1.9,21.5,12.1,421.8,0.65
+G-04,37.5,250.5,1.8,22.0,12.1,422.0,0.69
+G-05,37.5,251.5,2.1,19.2,12.1,422.4,0.71
+G-06,37.5,252.5,2.3,17.8,12.1,422.6,0.72
+G-07,38.5,247.5,1.9,21.8,11.9,415.5,0.64
+G-08,38.5,248.5,1.8,22.5,11.9,415.2,0.65
+G-09,38.5,249.5,1.5,25.0,11.9,414.8,0.62
+G-10,38.5,250.5,1.6,24.1,11.9,415.0,0.70
+G-11,38.5,251.5,1.7,23.0,11.9,415.3,0.68
+G-12,38.5,252.5,1.9,20.9,11.9,415.6,0.67
+G-13,39.5,247.5,1.4,29.5,11.7,408.8,0.59
+G-14,39.5,248.5,1.2,31.4,11.7,408.5,0.58
+G-15,39.5,249.5,0.9,38.2,11.7,408.1,0.55
+G-16,39.5,250.5,1.1,34.0,11.7,408.3,0.61
+G-17,39.5,251.5,1.3,30.8,11.7,408.6,0.60
+G-18,39.5,252.5,1.5,28.1,11.7,409.0,0.63
+G-19,40.5,247.5,0.9,42.1,11.5,401.5,0.52
+G-20,40.5,248.5,0.7,45.6,11.5,401.2,0.50
+G-21,40.5,249.5,0.5,52.8,11.5,400.9,0.48
+G-22,40.5,250.5,0.6,49.1,11.5,401.0,0.52
+G-23,40.5,251.5,0.8,44.3,11.5,401.4,0.54
+G-24,40.5,252.5,1.0,40.0,11.5,401.8,0.56
+G-25,41.5,247.5,0.5,55.2,11.3,394.3,0.46
+G-26,41.5,248.5,0.4,58.0,11.3,394.0,0.45
+G-27,41.5,249.5,0.3,64.5,11.3,393.8,0.42
+G-28,41.5,250.5,0.4,61.2,11.3,394.1,0.46
+G-29,41.5,251.5,0.5,57.4,11.3,394.5,0.48
+G-30,41.5,252.5,0.6,53.9,11.3,394.9,0.50
+G-31,42.5,247.5,0.3,66.8,11.1,386.5,0.41
+G-32,42.5,248.5,0.2,71.4,11.1,386.2,0.39
+G-33,42.5,249.5,0.2,73.0,11.1,386.0,0.38
+G-34,42.5,250.5,0.3,69.5,11.1,386.3,0.40
+G-35,42.5,251.5,0.3,67.1,11.1,386.6,0.43
+G-36,42.5,252.5,0.4,63.8,11.1,387.0,0.45
+
+--------------------------------------------------------------------------------
+[SECTION 3-A] MOLA DEM ELEVATION GRID (네비게이션 경사도 및 A* 경로 계산용 고도 데이터)
+Format: CSV (0.5° Interval High-Density Grid: 13x13 = 169 Points)
+Columns: lat, lon, elevation_m
+Description: 화산 중심부 고지대(최대 6,580m)와 북부 저지대 평원(최소 1,980m)의 지형 기복을 반영한 고도 데이터
+--------------------------------------------------------------------------------
+lat,lon,elevation_m
+37.0,247.0,2180
+37.0,247.5,2240
+37.0,248.0,2310
+37.0,248.5,2390
+37.0,249.0,2460
+37.0,249.5,2520
+37.0,250.0,2580
+37.0,250.5,2530
+37.0,251.0,2470
+37.0,251.5,2410
+37.0,252.0,2350
+37.0,252.5,2290
+37.0,253.0,2220
+37.5,247.0,2320
+37.5,247.5,2410
+37.5,248.0,2510
+37.5,248.5,2600
+37.5,249.0,2690
+37.5,249.5,2760
+37.5,250.0,2830
+37.5,250.5,2780
+37.5,251.0,2710
+37.5,251.5,2630
+37.5,252.0,2540
+37.5,252.5,2450
+37.5,253.0,2370
+38.0,247.0,2490
+38.0,247.5,2610
+38.0,248.0,2740
+38.0,248.5,2860
+38.0,249.0,2980
+38.0,249.5,3090
+38.0,250.0,3180
+38.0,250.5,3110
+38.0,251.0,3020
+38.0,251.5,2910
+38.0,252.0,2790
+38.0,252.5,2680
+38.0,253.0,2560
+38.5,247.0,2680
+38.5,247.5,2840
+38.5,248.0,3010
+38.5,248.5,3190
+38.5,249.0,3360
+38.5,249.5,3510
+38.5,250.0,3640
+38.5,250.5,3550
+38.5,251.0,3420
+38.5,251.5,3270
+38.5,252.0,3110
+38.5,252.5,2950
+38.5,253.0,2790
+39.0,247.0,2890
+39.0,247.5,3110
+39.0,248.0,3350
+39.0,248.5,3610
+39.0,249.0,3880
+39.0,249.5,4120
+39.0,250.0,4290
+39.0,250.5,4180
+39.0,251.0,3980
+39.0,251.5,3750
+39.0,252.0,3510
+39.0,252.5,3280
+39.0,253.0,3050
+39.5,247.0,3120
+39.5,247.5,3420
+39.5,248.0,3780
+39.5,248.5,4190
+39.5,249.0,4620
+39.5,249.5,5040
+39.5,250.0,5310
+39.5,250.5,5150
+39.5,251.0,4820
+39.5,251.5,4410
+39.5,252.0,3990
+39.5,252.5,3610
+39.5,253.0,3290
+40.0,247.0,3310
+40.0,247.5,3690
+40.0,248.0,4150
+40.0,248.5,4720
+40.0,249.0,5380
+40.0,249.5,6020
+40.0,250.0,6480
+40.0,250.5,6210
+40.0,251.0,5640
+40.0,251.5,4980
+40.0,252.0,4350
+40.0,252.5,3840
+40.0,253.0,3420
+40.5,247.0,3250
+40.5,247.5,3610
+40.5,248.0,4050
+40.5,248.5,4610
+40.5,249.0,5290
+40.5,249.5,6110
+40.5,250.0,6580
+40.5,250.5,6190
+40.5,251.0,5520
+40.5,251.5,4810
+40.5,252.0,4190
+40.5,252.5,3710
+40.5,253.0,3310
+41.0,247.0,3010
+41.0,247.5,3310
+41.0,248.0,3680
+41.0,248.5,4120
+41.0,249.0,4650
+41.0,249.5,5180
+41.0,250.0,5490
+41.0,250.5,5210
+41.0,251.0,4740
+41.0,251.5,4210
+41.0,252.0,3750
+41.0,252.5,3380
+41.0,253.0,3050
+41.5,247.0,2740
+41.5,247.5,2960
+41.5,248.0,3240
+41.5,248.5,3580
+41.5,249.0,3950
+41.5,249.5,4280
+41.5,250.0,4460
+41.5,250.5,4290
+41.5,251.0,3980
+41.5,251.5,3610
+41.5,252.0,3280
+41.5,252.5,2990
+41.5,253.0,2760
+42.0,247.0,2460
+42.0,247.5,2620
+42.0,248.0,2810
+42.0,248.5,3040
+42.0,249.0,3290
+42.0,249.5,3510
+42.0,250.0,3640
+42.0,250.5,3520
+42.0,251.0,3310
+42.0,251.5,3060
+42.0,252.0,2830
+42.0,252.5,2640
+42.0,253.0,2480
+42.5,247.0,2210
+42.5,247.5,2330
+42.5,248.0,2470
+42.5,248.5,2630
+42.5,249.0,2810
+42.5,249.5,2960
+42.5,250.0,3050
+42.5,250.5,2970
+42.5,251.0,2820
+42.5,251.5,2650
+42.5,252.0,2490
+42.5,252.5,2340
+42.5,253.0,2220
+43.0,247.0,1980
+43.0,247.5,2070
+43.0,248.0,2180
+43.0,248.5,2310
+43.0,249.0,2450
+43.0,249.5,2560
+43.0,250.0,2620
+43.0,250.5,2570
+43.0,251.0,2460
+43.0,251.5,2320
+43.0,252.0,2190
+43.0,252.5,2080
+43.0,253.0,1990
+
+--------------------------------------------------------------------------------
+[SECTION 3-B] HAZARDOUS TERRAIN & NO-GO OBSTACLES (통행 불가 및 주의 위험 지형 목록)
+Format: JSON Object
+Description: A* 길찾기 알고리즘에서 통행 불가(CRITICAL) 또는 높은 이동 비용(HIGH/MODERATE)으로 처리할 장애물 10개소
+--------------------------------------------------------------------------------
+{
+  "obstacles": [
+    {
+      "obstacle_id": "OBS-01",
+      "name": "Alba Central Caldera Pit",
+      "type": "caldera_cliff",
+      "lat": 40.35,
+      "lon": 250.00,
+      "radius_km": 14.0,
+      "max_slope_deg": 44.8,
+      "hazard_level": "CRITICAL",
+      "routing_penalty": "INFINITE",
+      "description": "알바 몬스 정상부 거대 칼데라 함몰지. 수직 단애로 인해 로버 횡단 절대 불가."
+    },
+    {
+      "obstacle_id": "OBS-02",
+      "name": "Tantalus Fossae Deep Canyon",
+      "type": "cliff_fissure",
+      "lat": 40.30,
+      "lon": 251.60,
+      "radius_km": 9.5,
+      "max_slope_deg": 41.5,
+      "hazard_level": "CRITICAL",
+      "routing_penalty": "INFINITE",
+      "description": "깊이 450m 이상의 수직 협곡 단층대. 통신 음영 및 추락 위험 구역."
+    },
+    {
+      "obstacle_id": "OBS-03",
+      "name": "Alba South Impact Crater",
+      "type": "crater",
+      "lat": 38.90,
+      "lon": 249.50,
+      "radius_km": 8.5,
+      "max_slope_deg": 34.2,
+      "hazard_level": "CRITICAL",
+      "routing_penalty": "INFINITE",
+      "description": "직경 17km의 급경사 충돌 크레이터. 분화구 외곽 림 우회 필수."
+    },
+    {
+      "obstacle_id": "OBS-04",
+      "name": "Western Dust Trap Basin",
+      "type": "soft_sand_dune",
+      "lat": 38.80,
+      "lon": 247.80,
+      "radius_km": 7.2,
+      "max_slope_deg": 11.5,
+      "hazard_level": "HIGH",
+      "routing_penalty": 4.5,
+      "description": "미세 먼지 퇴적 분지. 탐사 차량 바퀴 빠짐(고립) 위험 구역."
+    },
+    {
+      "obstacle_id": "OBS-05",
+      "name": "North Ridge Boulder Field",
+      "type": "rock_field",
+      "lat": 41.40,
+      "lon": 249.10,
+      "radius_km": 5.5,
+      "max_slope_deg": 18.5,
+      "hazard_level": "MODERATE",
+      "routing_penalty": 2.2,
+      "description": "고밀도 현무암 암석 지대. 주행 속도 60% 감속 필요 또는 우회 권장."
+    },
+    {
+      "obstacle_id": "OBS-06",
+      "name": "Ceraunius Fault Scarp",
+      "type": "fault_scarp",
+      "lat": 37.80,
+      "lon": 249.20,
+      "radius_km": 6.8,
+      "max_slope_deg": 29.0,
+      "hazard_level": "CRITICAL",
+      "routing_penalty": "INFINITE",
+      "description": "남부 진입로를 가로막는 급경사 단층절벽. 서쪽 또는 동쪽 협곡 통로로 우회 필요."
+    },
+    {
+      "obstacle_id": "OBS-07",
+      "name": "Eastern Wind-Scoured Corridor",
+      "type": "dust_storm_corridor",
+      "lat": 39.20,
+      "lon": 252.20,
+      "radius_km": 10.0,
+      "max_slope_deg": 8.0,
+      "hazard_level": "HIGH",
+      "routing_penalty": 3.0,
+      "description": "계절풍 집중 통로. 태양광 패널 먼지 피복 및 시야 제한 빈발 구역."
+    },
+    {
+      "obstacle_id": "OBS-08",
+      "name": "Arcadia Sublimation Sinkholes",
+      "type": "collapse_pit",
+      "lat": 42.10,
+      "lon": 249.80,
+      "radius_km": 4.5,
+      "max_slope_deg": 36.0,
+      "hazard_level": "CRITICAL",
+      "routing_penalty": "INFINITE",
+      "description": "지하 얼음 승화로 지반이 내려앉은 싱크홀 군집 지대."
+    },
+    {
+      "obstacle_id": "OBS-09",
+      "name": "Northwest Lava Flow Front",
+      "type": "rough_lava",
+      "lat": 41.10,
+      "lon": 247.90,
+      "radius_km": 6.0,
+      "max_slope_deg": 16.2,
+      "hazard_level": "MODERATE",
+      "routing_penalty": 2.0,
+      "description": "굳어진 아아(Aa) 용암류 선단부. 타이어 마모 위험으로 우회 권장."
+    },
+    {
+      "obstacle_id": "OBS-10",
+      "name": "Southeast Secondary Crater Cluster",
+      "type": "crater",
+      "lat": 37.60,
+      "lon": 251.40,
+      "radius_km": 5.0,
+      "max_slope_deg": 27.5,
+      "hazard_level": "HIGH",
+      "routing_penalty": 5.0,
+      "description": "소형 운석구 다수 밀집 지역. 야간 및 자율주행 시 경로 이탈 위험."
+    }
+  ]
+}

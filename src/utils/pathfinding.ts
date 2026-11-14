@@ -26,7 +26,8 @@ interface TileTerrainCell extends MarsTelemetryPoint {
 
 const LAYER_PATHS = {
   viking: 'Mars_Viking_MDIM21_ClrMosaic_global_232m',
-  mola: 'Mars_MGS_MOLA_ClrShade_merge_global_463m',
+  mola: 'Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw',
+  molaFallback: 'Mars_MGS_MOLA_ClrShade_merge_global_463m',
 };
 
 const tileImageCache = new Map<string, Promise<HTMLImageElement | null>>();
@@ -45,7 +46,17 @@ function loadCorsTile(
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      if (layer === 'mola') {
+        const fb = new Image();
+        fb.crossOrigin = 'anonymous';
+        fb.onload = () => resolve(fb);
+        fb.onerror = () => resolve(null);
+        fb.src = `https://trek.nasa.gov/tiles/Mars/EQ/${LAYER_PATHS.molaFallback}/1.0.0/default/default028mm/${z}/${y}/${x}.jpg`;
+      } else {
+        resolve(null);
+      }
+    };
     img.src = `https://trek.nasa.gov/tiles/Mars/EQ/${LAYER_PATHS[layer]}/1.0.0/default/default028mm/${z}/${y}/${x}.jpg`;
   });
   tileImageCache.set(key, p);
@@ -298,7 +309,7 @@ async function buildRealTileTerrainGrid(
         roughnessHazard: Math.max(baseTel.roughnessHazard, cliffHazard),
         cliffHazard,
         isFissureWall,
-        isObstacle: baseTel.slopeDeg >= 19.0 || isFissureWall,
+        isObstacle: baseTel.isObstacle || baseTel.slopeDeg >= 19.0 || isFissureWall,
       });
     }
     grid.push(rowArr);
@@ -542,15 +553,19 @@ function runWeightedAStar(
             nextCell.slopeDeg > 9
               ? (nextCell.slopeDeg - 8) * 0.85
               : nextCell.slopeDeg * 0.12;
-          penalty += cliffPen + slopePen;
+          penalty += cliffPen + slopePen + (nextCell.albaHazardPenalty ?? 0);
         } else if (mode === 'fast') {
           const cliffPen = (nextCell.cliffHazard / 50) * 0.75;
           const wallPen = nextBlocked ? 10 : 0;
-          penalty += cliffPen + wallPen + nextCell.slopeDeg * 0.04;
+          penalty +=
+            cliffPen +
+            wallPen +
+            nextCell.slopeDeg * 0.04 +
+            (nextCell.albaHazardPenalty ? nextCell.albaHazardPenalty * 0.45 : 0);
         } else if (mode === 'water') {
           const waterPen = ((100 - nextCell.combinedWaterProb) / 100) * 1.6;
           const cliffPen = Math.pow(nextCell.cliffHazard / 36, 1.8) * 1.0;
-          penalty += waterPen + cliffPen;
+          penalty += waterPen + cliffPen + (nextCell.albaHazardPenalty ?? 0) * 0.7;
         }
 
         const tentativeG = current.g + surfaceStepKm * penalty;
@@ -749,7 +764,7 @@ function runWeightedAStar(
       elevationM: first.elevationM,
       slopeDeg: first.slopeDeg,
       waterProb: first.waterProb,
-      instructionKo: `기지 출발 · ${bearingToKorean(nextB)}(${nextB}°) 방향으로 초기 주행 개시`,
+      instructionKo: `출발 · ${bearingToKorean(nextB)}(${nextB}°)`,
       tag: 'start',
     });
 
@@ -789,10 +804,10 @@ function runWeightedAStar(
             : 'checkpoint';
         const dirKo = bearingToKorean(bAfter);
         const instructionKo = isTurn
-          ? `지형·단층 우회 변침 → ${dirKo}(${bAfter}°) 방향 (경사 ${points[i].slopeDeg}°)`
+          ? `우회 · ${dirKo}(${bAfter}°)`
           : isWaterPeak
-            ? `SWIM 지하수 유망 구간(${points[i].waterProb}%) 통과 → ${dirKo}(${bAfter}°)`
-            : `평탄 구간 직진 유지 → ${dirKo}(${bAfter}°) 진행`;
+            ? `지하수(${points[i].waterProb}%) · ${dirKo}(${bAfter}°)`
+            : `직진 · ${dirKo}(${bAfter}°)`;
 
         waypoints.push({
           index: waypoints.length + 1,
@@ -837,7 +852,7 @@ function runWeightedAStar(
       elevationM: last.elevationM,
       slopeDeg: last.slopeDeg,
       waterProb: last.waterProb,
-      instructionKo: `목적지 도착 · 현장 시추 및 토양 성분 정밀 검증`,
+      instructionKo: snappedToSafeApproach ? '안전 접근점 도착' : '목적지 도착',
       tag: 'target',
     });
   }
@@ -859,19 +874,14 @@ function runWeightedAStar(
 
   const modeLabel =
     mode === 'safe'
-      ? '최적 안전 경로'
+      ? '최적 안전'
       : mode === 'fast'
-        ? '최단 신속 경로'
-        : '수자원 경유 경로';
+        ? '최단 신속'
+        : '수자원 경유';
 
   const summaryKo = snappedToSafeApproach
-    ? `목적지 인근 절벽·위험 지형을 피해 가장 가까운 안전 접근 지점(원 목표 ${bestApproachDistKm.toFixed(1)}km 앞)으로 조정 · 총 ${accumKm.toFixed(1)} km`
-    : `${modeLabel} · 총 ${accumKm.toFixed(
-        1
-      )} km (직선 대비 ${Math.max(
-        0,
-        Math.round((accumKm / Math.max(1, directDist) - 1) * 100)
-      )}% 우회) · 경유점 ${waypoints.length}개 · 최대 경사 ${maxSlope.toFixed(1)}°`;
+    ? `목적지 인근 험지 우회 → 가장 가까운 안전 지점(${bestApproachDistKm.toFixed(1)}km 앞) 지정`
+    : `${modeLabel} · ${accumKm.toFixed(1)} km · 로버 ${estimatedHoursRover}h`;
 
   return {
     found: true,

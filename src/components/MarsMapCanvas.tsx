@@ -11,7 +11,9 @@ import {
   LandmarkType,
   MarsBaseLayerId,
   MarsTelemetryPoint,
+  RoutePoint,
   RouteResult,
+  RouteWaypoint,
   SensorLayers,
 } from '../types/mars';
 
@@ -31,15 +33,25 @@ interface MarsMapCanvasProps {
   selectedPoint: MarsTelemetryPoint | null;
   selectedLandmark: Landmark | null;
   landmarkTypeFilter: LandmarkType | 'all';
+  highlightedRoutePoint?: RoutePoint | null;
+  hoveredTelemetry?: MarsTelemetryPoint | null;
+  hoveredWaypointIndex?: number | null;
+  chartOpen?: boolean;
   onHoverPoint: (pt: MarsTelemetryPoint | null) => void;
-  onMapClick: (pt: MarsTelemetryPoint) => void;
+  onHoverWaypoint?: (
+    wp: RouteWaypoint | null,
+    screenPos?: { x: number; y: number }
+  ) => void;
+  onMapClick: (pt: MarsTelemetryPoint, screenPos?: { x: number; y: number }) => void;
   onPinClick?: (pin: 'start' | 'destination') => void;
   onSelectLandmark: (lm: Landmark | null) => void;
+  onShowArGuide?: () => void;
 }
 
-const LAYER_PATHS: Record<'viking' | 'mola', string> = {
+const LAYER_PATHS: Record<'viking' | 'mola' | 'molaFallback', string> = {
   viking: 'Mars_Viking_MDIM21_ClrMosaic_global_232m',
-  mola: 'Mars_MGS_MOLA_ClrShade_merge_global_463m',
+  mola: 'Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw',
+  molaFallback: 'Mars_MGS_MOLA_ClrShade_merge_global_463m',
 };
 
 type CachedTile =
@@ -55,25 +67,13 @@ const SORTED_LANDMARKS = [...MARS_LANDMARKS].sort((a, b) => a.tier - b.tier);
 // Cached label text widths so Canvas 2D measureText runs at most once per landmark
 const labelWidthCache = new Map<string, number>();
 
-// Deterministic starfield points for deep-space frame outside Mars bounds
-const STARS = Array.from({ length: 120 }, (_, i) => {
-  const s1 = Math.sin(i * 127.1) * 43758.5453;
-  const s2 = Math.sin(i * 269.5) * 43758.5453;
-  const s3 = Math.sin(i * 419.2) * 43758.5453;
-  return {
-    x: s1 - Math.floor(s1),
-    y: s2 - Math.floor(s2),
-    a: 0.16 + (s3 - Math.floor(s3)) * 0.42,
-    r: i % 7 === 0 ? 1.3 : 0.8,
-  };
-});
-
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
 
+// Cover-fit minimum PPD: guarantees Mars (-180..+180, -90..+90) always fills 100% of the viewport with zero black bars
 function getMinPpd(width: number, height: number): number {
-  return Math.max(2.3, Math.min(width / 360, height / 170) * 0.94);
+  return Math.max(width / 360, height / 180);
 }
 
 function clampSingleMapViewport(
@@ -87,13 +87,11 @@ function clampSingleMapViewport(
   const nextPpd = clamp(ppd, minPpd, 140);
 
   const halfScreenLon = width / 2 / nextPpd;
-  const maxPanLon =
-    halfScreenLon >= 178 ? 0 : Math.max(0, 180 - halfScreenLon * 0.92);
+  const maxPanLon = Math.max(0, 180 - halfScreenLon);
   const nextLon = clamp(lon, -maxPanLon, maxPanLon);
 
   const halfScreenLat = height / 2 / nextPpd;
-  const maxPanLat =
-    halfScreenLat >= 82 ? 0 : Math.max(0, 85 - halfScreenLat * 0.92);
+  const maxPanLat = Math.max(0, 90 - halfScreenLat);
   const nextLat = clamp(lat, -maxPanLat, maxPanLat);
 
   return { lat: nextLat, lon: nextLon, ppd: nextPpd };
@@ -111,39 +109,13 @@ function computeBearingDeg(
   return Math.round(((rad * 180) / Math.PI + 360) % 360);
 }
 
-// Color ramp helper for MOLA elevation (-6000m .. +12000m)
+// Discrete 5-tier color ramp for MOLA elevation
 function elevationToRgb(elevM: number): [number, number, number] {
-  const t = clamp((elevM + 5500) / 16000, 0, 1);
-  if (t < 0.25) {
-    const k = t / 0.25;
-    return [
-      Math.round(37 + k * (14 - 37)),
-      Math.round(99 + k * (165 - 99)),
-      Math.round(235 + k * (233 - 235)),
-    ];
-  }
-  if (t < 0.5) {
-    const k = (t - 0.25) / 0.25;
-    return [
-      Math.round(14 + k * (34 - 14)),
-      Math.round(165 + k * (197 - 165)),
-      Math.round(233 + k * (94 - 233)),
-    ];
-  }
-  if (t < 0.75) {
-    const k = (t - 0.5) / 0.25;
-    return [
-      Math.round(34 + k * (245 - 34)),
-      Math.round(197 + k * (158 - 197)),
-      Math.round(94 + k * (11 - 94)),
-    ];
-  }
-  const k = (t - 0.75) / 0.25;
-  return [
-    Math.round(245 + k * (239 - 245)),
-    Math.round(158 + k * (68 - 158)),
-    Math.round(11 + k * (68 - 11)),
-  ];
+  if (elevM < -3000) return [37, 99, 235];   // 초저지대: 진한 파랑
+  if (elevM < 0) return [6, 182, 212];       // 북부/분지 저지대: 청록
+  if (elevM < 3000) return [34, 197, 94];    // 기준 평지: 초록
+  if (elevM < 7500) return [245, 158, 11];   // 고원/산록: 노랑·주황
+  return [220, 38, 38];                      // 화산 고산대: 진빨강
 }
 
 export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
@@ -163,10 +135,16 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     selectedPoint,
     selectedLandmark,
     landmarkTypeFilter,
+    highlightedRoutePoint,
+    hoveredTelemetry,
+    hoveredWaypointIndex,
+    chartOpen,
     onHoverPoint,
+    onHoverWaypoint,
     onMapClick,
     onPinClick,
     onSelectLandmark,
+    onShowArGuide,
   }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -202,6 +180,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       selectedPoint,
       selectedLandmark,
       landmarkTypeFilter,
+      highlightedRoutePoint,
+      hoveredWaypointIndex,
       canvasSize,
       onViewportChange,
     });
@@ -215,6 +195,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       selectedPoint,
       selectedLandmark,
       landmarkTypeFilter,
+      highlightedRoutePoint,
+      hoveredWaypointIndex,
       canvasSize,
       onViewportChange,
     };
@@ -237,7 +219,20 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           scheduleDrawRef.current();
         };
         img.onerror = () => {
-          tileCache.set(key, { status: 'error' });
+          if (layerKey === 'mola') {
+            const fb = new Image();
+            fb.crossOrigin = 'anonymous';
+            fb.onload = () => {
+              tileCache.set(key, { status: 'ready', img: fb });
+              scheduleDrawRef.current();
+            };
+            fb.onerror = () => {
+              tileCache.set(key, { status: 'error' });
+            };
+            fb.src = `https://trek.nasa.gov/tiles/Mars/EQ/${LAYER_PATHS.molaFallback}/1.0.0/default/default028mm/${z}/${y}/${x}.jpg`;
+          } else {
+            tileCache.set(key, { status: 'error' });
+          }
         };
         img.src = `https://trek.nasa.gov/tiles/Mars/EQ/${LAYER_PATHS[layerKey]}/1.0.0/default/default028mm/${z}/${y}/${x}.jpg`;
         return entry;
@@ -283,14 +278,23 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       canvas.width = Math.round(canvasSize.width * dpr);
       canvas.height = Math.round(canvasSize.height * dpr);
 
+      const prev = viewRef.current;
       const clamped = clampSingleMapViewport(
-        viewRef.current.lat,
-        viewRef.current.lon,
-        viewRef.current.ppd,
+        prev.lat,
+        prev.lon,
+        prev.ppd,
         canvasSize.width,
         canvasSize.height
       );
+      const changed =
+        Math.abs(clamped.ppd - prev.ppd) > 0.02 ||
+        Math.abs(clamped.lat - prev.lat) > 0.02 ||
+        Math.abs(clamped.lon - prev.lon) > 0.02;
       viewRef.current = clamped;
+      if (changed) {
+        lastEmittedRef.current = clamped;
+        propsRef.current.onViewportChange(clamped.lat, clamped.lon, clamped.ppd);
+      }
       scheduleDrawRef.current();
     }, [canvasSize]);
 
@@ -324,7 +328,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const img = octx.createImageData(atlas.width, atlas.height);
       const data = img.data;
       const total = atlas.width * atlas.height;
-      const { water, soil, elevM, geo, slopeX10 } = atlas;
+      const { water, elevM, geo, slopeX10, farmingTierCode } = atlas;
       const alphaScale = clamp(layerOpacity, 0.2, 1.0);
 
       for (let i = 0; i < total; i++) {
@@ -333,31 +337,35 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         let b = 0;
         let a = 0;
 
-        // 1. MOLA Elevation color ramp (lowest layer so features stack clearly)
+        // 1. MOLA Elevation 5-tier color ramp
         if (layers.elevation) {
           const [er, eg, eb] = elevationToRgb(elevM[i]);
           r = er;
           g = eg;
           b = eb;
-          a = Math.max(a, 115);
+          a = Math.max(a, elevM[i] > 7500 ? 132 : 112);
         }
 
-        // 2. SWIM Subsurface Water probability — continuous color depth from faint to deep vivid blue
+        // 2. SWIM Subsurface Water probability — distinct 5-tier density blues
         if (layers.swimWater) {
           const wVal = water[i];
-          const t = clamp((wVal - 10) / 86, 0, 1);
-          // Smooth gradient: light cyan (#38BDF8) -> rich deep ocean blue (#0284C7 -> #1D4ED8)
-          const wr = Math.round(56 - t * 44);
-          const wg = Math.round(195 - t * 88);
-          const wb = Math.round(248 - t * 18);
-          const wa = Math.round(14 + Math.pow(t, 1.25) * 145);
+          let wr = 148,
+            wg = 163,
+            wb = 184,
+            wa = 18;
+          if (wVal >= 80) {
+            wr = 30; wg = 64; wb = 175; wa = 176;     // 핵심 지하 얼음: 진한 남청
+          } else if (wVal >= 65) {
+            wr = 37; wg = 99; wb = 235; wa = 144;     // 고농도 지하수: 진파랑
+          } else if (wVal >= 45) {
+            wr = 14; wg = 165; wb = 233; wa = 104;    // 유망 지대: 선명 청색
+          } else if (wVal >= 25) {
+            wr = 56; wg = 189; wb = 248; wa = 58;     // 미량 함수: 연하늘
+          }
           if (a === 0) {
-            r = wr;
-            g = wg;
-            b = wb;
-            a = wa;
+            r = wr; g = wg; b = wb; a = wa;
           } else {
-            const blend = wa / 160;
+            const blend = wa / 180;
             r = Math.round(r * (1 - blend) + wr * blend);
             g = Math.round(g * (1 - blend) + wg * blend);
             b = Math.round(b * (1 - blend) + wb * blend);
@@ -365,62 +373,77 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           }
         }
 
-        // 3. CRISM Farming Suitable Soil
-        if (layers.soilFertility && soil[i] >= 36) {
-          const t = clamp((soil[i] - 36) / 56, 0, 1);
-          const sr = 16;
-          const sg = Math.round(165 + t * 50);
-          const sb = Math.round(115 + t * 25);
-          const sa = Math.round(18 + t * 115);
-          if (a === 0) {
-            r = sr;
-            g = sg;
-            b = sb;
-            a = sa;
+        // 3. CRISM Farming Suitability — 100% synced 5-tier colors matching click telemetry!
+        // 4: optimal(파랑), 3: suitable(초록), 2: possible(노랑~주황), 1: unsuitable(빨강), 0: lethal(진갈색)
+        if (layers.soilFertility) {
+          const code = farmingTierCode[i];
+          let sr = 107,
+            sg = 52,
+            sb = 16,
+            sa = 158;
+          if (code === 4) {
+            sr = 37; sg = 130; sb = 246; sa = 138;    // 파랑: 농업 최상
+          } else if (code === 3) {
+            sr = 16; sg = 185; sb = 129; sa = 132;    // 초록: 농업 적합
+          } else if (code === 2) {
+            sr = 245; sg = 158; sb = 11; sa = 116;    // 노랑~주황: 농업 가능성 있음
+          } else if (code === 1) {
+            sr = 239; sg = 68; sb = 68; sa = 124;     // 빨강: 농업 불가
           } else {
-            r = Math.round(r * 0.45 + sr * 0.55);
-            g = Math.round(g * 0.45 + sg * 0.55);
-            b = Math.round(b * 0.45 + sb * 0.55);
+            sr = 107; sg = 52; sb = 16; sa = 164;     // 갈색: 진입 극위험
+          }
+          if (a === 0) {
+            r = sr; g = sg; b = sb; a = sa;
+          } else {
+            r = Math.round(r * 0.35 + sr * 0.65);
+            g = Math.round(g * 0.35 + sg * 0.65);
+            b = Math.round(b * 0.35 + sb * 0.65);
             a = Math.max(a, sa);
           }
         }
 
-        // 4. Volcano & Geothermal Zones
-        if (layers.geothermal && geo[i] >= 26) {
-          const t = clamp((geo[i] - 26) / 70, 0, 1);
-          const gr = 249;
-          const gg = Math.round(158 - t * 55);
-          const gb = 16;
-          const ga = Math.round(22 + t * 125);
+        // 4. Volcano & Geothermal Zones (3 clear temperature tiers)
+        if (layers.geothermal && geo[i] >= 25) {
+          const gVal = geo[i];
+          let gr = 253,
+            gg = 224,
+            gb = 71,
+            ga = 68;
+          if (gVal >= 75) {
+            gr = 220; gg = 38; gb = 38; ga = 158;     // 고열 화산·열수 핵심
+          } else if (gVal >= 50) {
+            gr = 249; gg = 115; gb = 22; ga = 118;    // 화산 지열대
+          }
           if (a === 0) {
-            r = gr;
-            g = gg;
-            b = gb;
-            a = ga;
+            r = gr; g = gg; b = gb; a = ga;
           } else {
-            r = Math.round(r * 0.4 + gr * 0.6);
-            g = Math.round(g * 0.4 + gg * 0.6);
-            b = Math.round(b * 0.4 + gb * 0.6);
+            r = Math.round(r * 0.35 + gr * 0.65);
+            g = Math.round(g * 0.35 + gg * 0.65);
+            b = Math.round(b * 0.35 + gb * 0.65);
             a = Math.max(a, ga);
           }
         }
 
-        // 5. Steep Slope / Cliff Hazard Zones
-        if (layers.slopeHazard && slopeX10[i] >= 95) {
-          const t = clamp((slopeX10[i] - 95) / 140, 0.15, 1);
-          const hr = 244;
-          const hg = 63;
-          const hb = 94;
-          const ha = Math.round(35 + t * 135);
+        // 5. Steep Slope / Cliff Hazard Zones (4 explicit slope tiers)
+        if (layers.slopeHazard && slopeX10[i] >= 70) {
+          const s10 = slopeX10[i];
+          let hr = 250,
+            hg = 204,
+            hb = 21,
+            ha = 64;
+          if (s10 >= 250) {
+            hr = 107; hg = 40; hb = 20; ha = 180;     // >=25° 극위험 절벽(갈색)
+          } else if (s10 >= 180) {
+            hr = 239; hg = 68; hb = 68; ha = 150;     // 18~24.9° 전복 위험(빨강)
+          } else if (s10 >= 120) {
+            hr = 249; hg = 115; hb = 22; ha = 112;    // 12~17.9° 급경사(주황)
+          }
           if (a === 0) {
-            r = hr;
-            g = hg;
-            b = hb;
-            a = ha;
+            r = hr; g = hg; b = hb; a = ha;
           } else {
-            r = Math.round(r * 0.35 + hr * 0.65);
-            g = Math.round(g * 0.35 + hg * 0.65);
-            b = Math.round(b * 0.35 + hb * 0.65);
+            r = Math.round(r * 0.3 + hr * 0.7);
+            g = Math.round(g * 0.3 + hg * 0.7);
+            b = Math.round(b * 0.3 + hb * 0.7);
             a = Math.max(a, ha);
           }
         }
@@ -429,7 +452,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         data[p] = r;
         data[p + 1] = g;
         data[p + 2] = b;
-        data[p + 3] = Math.min(220, Math.round(a * alphaScale));
+        data[p + 3] = Math.min(225, Math.round(a * alphaScale));
       }
 
       octx.putImageData(img, 0, 0);
@@ -536,6 +559,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         selectedPoint: curSelectedPt,
         selectedLandmark: curSelectedLm,
         landmarkTypeFilter: curFilter,
+        highlightedRoutePoint: curRouteBeacon,
+        hoveredWaypointIndex: curHoverWpIdx,
         canvasSize: curSize,
       } = propsRef.current;
 
@@ -546,14 +571,9 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Deep space background with subtle stars
-      ctx.fillStyle = '#030508';
+      // Base fill behind Mars tiles
+      ctx.fillStyle = '#120a07';
       ctx.fillRect(0, 0, width, height);
-      for (let i = 0; i < STARS.length; i++) {
-        const s = STARS[i];
-        ctx.fillStyle = `rgba(226, 232, 240, ${s.a})`;
-        ctx.fillRect(s.x * width, s.y * height, s.r, s.r);
-      }
 
       const idealZ = clamp(Math.round(Math.log2((curPpd * 180) / 256)), 0, 7);
 
@@ -581,16 +601,10 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         ctx.restore();
       }
 
-      // Subtle frame border around single Mars projection when zoomed out
       const mapLeft = width / 2 + (-180 - cLon) * curPpd;
       const mapTop = height / 2 + (cLat - 90) * curPpd;
       const mapW = 360 * curPpd;
       const mapH = 180 * curPpd;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(mapLeft, mapTop, mapW, mapH);
-      ctx.restore();
 
       // Linear single-map projection — zoom-invariant!
       const toScreen = (lat: number, lon: number) => ({
@@ -708,6 +722,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
             if (p.x < 10 || p.x > width - 10 || p.y < 10 || p.y > height - 10) {
               continue;
             }
+            const isWpHovered = curHoverWpIdx === wp.index;
             ctx.save();
             const wpColor =
               wp.tag === 'avoid'
@@ -715,11 +730,18 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
                 : wp.tag === 'water'
                   ? '#38BDF8'
                   : '#E2E8F0';
-            ctx.fillStyle = '#070A10';
+            if (isWpHovered) {
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 12.5, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.fillStyle = isWpHovered ? '#0F172A' : '#070A10';
             ctx.strokeStyle = wpColor;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = isWpHovered ? 2.2 : 1.5;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 7.5, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, isWpHovered ? 9 : 7.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
@@ -749,6 +771,45 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
             ctx.beginPath();
             ctx.arc(pOrig.x, pOrig.y, 5, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.restore();
+          }
+
+          // Chart-hovered live route sync beacon on the Mars map!
+          if (curRouteBeacon) {
+            const bp = toScreen(curRouteBeacon.lat, curRouteBeacon.lon);
+            ctx.save();
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+            ctx.beginPath();
+            ctx.arc(bp.x, bp.y, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#FBBF24';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(bp.x, bp.y, 8, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(bp.x, bp.y, 3.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tag = `${curRouteBeacon.distanceFromStartKm}km · ${curRouteBeacon.elevationM.toLocaleString()}m · 물 ${curRouteBeacon.waterProb}%`;
+            ctx.font = '600 10px "JetBrains Mono", monospace';
+            const tw = ctx.measureText(tag).width;
+            const bx = clamp(bp.x - tw / 2 - 7, 10, width - tw - 24);
+            const by = Math.max(56, bp.y - 32);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, tw + 14, 20, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#FEF3C7';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tag, bx + 7, by + 10);
             ctx.restore();
           }
 
@@ -993,6 +1054,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       selectedPoint,
       selectedLandmark,
       landmarkTypeFilter,
+      highlightedRoutePoint,
+      hoveredWaypointIndex,
       scheduleDraw,
     ]);
 
@@ -1031,9 +1094,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const sy = clientY - rect.top;
       const v = viewRef.current;
 
-      const lon = v.lon + (sx - canvasSize.width / 2) / v.ppd;
-      const lat = v.lat - (sy - canvasSize.height / 2) / v.ppd;
-      if (lon < -180 || lon > 180 || lat < -85 || lat > 85) return null;
+      const lon = clamp(v.lon + (sx - canvasSize.width / 2) / v.ppd, -180, 180);
+      const lat = clamp(v.lat - (sy - canvasSize.height / 2) / v.ppd, -89.9, 89.9);
       return { lat, lon };
     };
 
@@ -1098,6 +1160,30 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         );
         scheduleDraw();
         return;
+      }
+
+      const canvas = canvasRef.current;
+      if (canvas && onHoverWaypoint) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const v = viewRef.current;
+        const wps = propsRef.current.route.waypoints;
+        let hitWp: RouteWaypoint | null = null;
+        let hitPos: { x: number; y: number } | undefined;
+        let bestDist = 15;
+        for (let i = 0; i < wps.length; i++) {
+          const wp = wps[i];
+          const wx = canvasSize.width / 2 + (wp.lon - v.lon) * v.ppd;
+          const wy = canvasSize.height / 2 + (v.lat - wp.lat) * v.ppd;
+          const d = Math.hypot(sx - wx, sy - wy);
+          if (d < bestDist) {
+            bestDist = d;
+            hitWp = wp;
+            hitPos = { x: wx, y: wy };
+          }
+        }
+        onHoverWaypoint(hitWp, hitPos);
       }
 
       const now = performance.now();
@@ -1185,10 +1271,18 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       }
 
       if (closestLm) {
+        const lx = canvasSize.width / 2 + (closestLm.lon - v.lon) * v.ppd;
+        const ly = canvasSize.height / 2 + (v.lat - closestLm.lat) * v.ppd;
         onSelectLandmark(closestLm);
-        onMapClick(sampleMarsTelemetry(closestLm.lat, closestLm.lon));
+        onMapClick(sampleMarsTelemetry(closestLm.lat, closestLm.lon), {
+          x: rect.left + lx,
+          y: rect.top + ly,
+        });
       } else {
-        onMapClick(sampleMarsTelemetry(coord.lat, coord.lon));
+        onMapClick(sampleMarsTelemetry(coord.lat, coord.lon), {
+          x: e.clientX,
+          y: e.clientY,
+        });
       }
     };
 
@@ -1221,6 +1315,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
               scheduleViewportSync(true);
             }
             onHoverPoint(null);
+            onHoverWaypoint?.(null);
           }}
           className={`w-full h-full block ${
             cursorGrabbing ? 'cursor-grabbing' : 'cursor-crosshair'
@@ -1230,34 +1325,80 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         {/* AR Spacesuit Visor HUD Overlay (only when AR mode is toggled) */}
         {arVisorMode && (
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute top-16 left-6 w-10 h-10 border-t border-l border-cyan-400/70" />
-            <div className="absolute top-16 right-6 w-10 h-10 border-t border-r border-cyan-400/70" />
-            <div className="absolute bottom-20 left-6 w-10 h-10 border-b border-l border-cyan-400/70" />
-            <div className="absolute bottom-20 right-6 w-10 h-10 border-b border-r border-cyan-400/70" />
+            <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-cyan-300/65" />
+            <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-cyan-300/65" />
+            <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-cyan-300/65" />
+            <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-cyan-300/65" />
 
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-[#05070B]/90 border border-cyan-400/35 px-4 py-1.5 rounded flex items-center gap-4 text-xs font-mono text-cyan-300">
-              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="pointer-events-auto absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/45 backdrop-blur-md border border-cyan-300/45 px-4 py-1.5 rounded-lg flex items-center gap-3.5 text-xs font-mono text-cyan-200 shadow-lg">
+              <Compass className="w-3.5 h-3.5 text-cyan-300" />
               <span>
                 HDG {startCoord && destCoord ? `${String(bearing).padStart(3, '0')}°` : '---'}
               </span>
-              <span className="text-white/20">|</span>
+              <span className="text-white/25">|</span>
               <span>
                 DIST {route.found ? `${route.totalDistanceKm} km` : '--'}
               </span>
-              <span className="text-white/20">|</span>
+              <span className="text-white/25">|</span>
               <span>
                 ETA {route.found ? `${route.estimatedHoursRover} h` : '--'}
               </span>
+              {onShowArGuide && (
+                <>
+                  <span className="text-white/25">|</span>
+                  <button
+                    type="button"
+                    onClick={onShowArGuide}
+                    className="text-[11px] font-sans font-medium text-cyan-200 hover:text-white underline underline-offset-2"
+                  >
+                    ? 사용법
+                  </button>
+                </>
+              )}
             </div>
 
-            <div className="absolute top-1/2 left-7 -translate-y-1/2 flex flex-col gap-3 text-[10px] font-mono text-cyan-400/65">
+            {hoveredTelemetry && (
+              <div
+                className={`absolute left-1/2 -translate-x-1/2 bg-slate-900/45 backdrop-blur-md border border-cyan-300/35 px-4 py-1.5 rounded-lg flex items-center gap-3 text-[11px] font-mono text-cyan-100 whitespace-nowrap ${
+                  chartOpen ? 'top-[60px]' : 'bottom-6'
+                }`}
+              >
+                <span>
+                  SCAN {hoveredTelemetry.lat.toFixed(1)}°, {hoveredTelemetry.lon.toFixed(1)}°
+                </span>
+                <span className="text-white/25">|</span>
+                <span>고도 {hoveredTelemetry.elevationM.toLocaleString()}m</span>
+                <span className="text-white/25">|</span>
+                <span
+                  className={
+                    hoveredTelemetry.slopeDeg >= 18
+                      ? 'text-rose-300 font-bold'
+                      : hoveredTelemetry.slopeDeg >= 10
+                        ? 'text-amber-300'
+                        : 'text-emerald-300'
+                  }
+                >
+                  경사 {hoveredTelemetry.slopeDeg}°
+                </span>
+                <span className="text-white/25">|</span>
+                <span className="text-sky-300">
+                  지하수 {hoveredTelemetry.combinedWaterProb}%
+                </span>
+                <span className="text-white/25">|</span>
+                <span className="font-sans font-medium text-white">
+                  {hoveredTelemetry.farmingLabelKo}
+                </span>
+              </div>
+            )}
+
+            <div className="absolute top-1/2 left-7 -translate-y-1/2 flex flex-col gap-3 text-[10px] font-mono text-cyan-300/75">
               <span>+10° ─</span>
-              <span className="text-cyan-300">00° ━━</span>
+              <span className="text-cyan-200">00° ━━</span>
               <span>-10° ─</span>
             </div>
-            <div className="absolute top-1/2 right-16 -translate-y-1/2 flex flex-col gap-3 text-[10px] font-mono text-cyan-400/65 text-right">
+            <div className="absolute top-1/2 right-16 -translate-y-1/2 flex flex-col gap-3 text-[10px] font-mono text-cyan-300/75 text-right">
               <span>─ +10°</span>
-              <span className="text-cyan-300">━━ 00°</span>
+              <span className="text-cyan-200">━━ 00°</span>
               <span>─ -10°</span>
             </div>
           </div>

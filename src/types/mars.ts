@@ -1,4 +1,12 @@
-export type RegionId = 'global' | 'tharsis' | 'elysium';
+export type RegionId =
+  | 'global'
+  | 'tharsis'
+  | 'elysium'
+  | 'valles_marineris'
+  | 'utopia'
+  | 'arcadia'
+  | 'syrtis_isidis'
+  | 'hellas';
 
 export type MarsBaseLayerId = 'viking' | 'mola' | 'hybrid';
 
@@ -10,6 +18,13 @@ export type FarmingStrategy =
   | 'direct_soil'
   | 'earth_soil_hydro'
   | 'explore_only';
+
+export type FarmingTier =
+  | 'optimal'     // 파랑: 최상 (현지 토양·지하수 최적)
+  | 'suitable'    // 초록: 적합 (비닐하우스·토양 개량)
+  | 'possible'    // 노랑~주황: 가능성 있음 (밀폐 온실·지구흙 수경재배)
+  | 'unsuitable'  // 빨강: 농업 불가 (고지대·수분 부족)
+  | 'lethal';     // 갈색: 진입 극위험 (절벽·칼데라·치명 구역)
 
 export interface SensorLayers {
   swimWater: boolean;
@@ -57,6 +72,15 @@ export interface MarsTelemetryPoint {
   combinedWaterProb: number;
   farmingScore: number;
   recommendedStrategy: FarmingStrategy;
+  farmingTier: FarmingTier;
+  farmingLabelKo: string;
+  farmingSolutionKo: string;
+  iceDepthM?: number;
+  solarFluxWm2?: number;
+  daylightHours?: number;
+  perchloratePct?: number;
+  albaHazardPenalty?: number;
+  albaHazardName?: string;
 }
 
 export interface GridCell extends MarsTelemetryPoint {
