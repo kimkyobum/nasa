@@ -282,13 +282,36 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
 
           {layout === 'split' && !fullscreen3D ? (
             <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-1.5 pointer-events-none">
-              <span className="px-2 py-0.5 text-[10px] rounded bg-slate-950/85 text-slate-200 border border-white/15">
-                드래그 회전 · 경로 클릭 이동
-              </span>
+              <div className="pointer-events-auto flex items-center gap-1">
+                {hasRoute && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (routeInfo && !routeInfo.inPatch && onJumpToCoord) {
+                        onJumpToCoord(routeInfo.lat, routeInfo.lon);
+                      }
+                      setCameraViewMode((m) =>
+                        m === 'roadview' ? 'orbit' : 'roadview'
+                      );
+                    }}
+                    className={`px-2 py-0.5 text-[10px] font-semibold rounded flex items-center gap-1 transition-colors ${
+                      cameraViewMode === 'roadview'
+                        ? 'bg-sky-400 text-slate-950 font-bold shadow'
+                        : 'bg-slate-900/85 text-sky-200 border border-sky-400/35 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Navigation className="w-3 h-3" />
+                    <span>{cameraViewMode === 'roadview' ? '로드뷰 주행중' : '로드뷰 주행'}</span>
+                  </button>
+                )}
+                <span className="px-2 py-0.5 text-[10px] rounded bg-slate-950/85 text-slate-200 border border-white/15">
+                  드래그 회전
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleExpand3DFullscreen}
-                className="pointer-events-auto px-2.5 py-0.5 text-[10px] font-semibold rounded bg-cyan-500/90 text-slate-950 hover:bg-cyan-400"
+                className="pointer-events-auto px-2.5 py-0.5 text-[10px] font-semibold rounded bg-cyan-500/90 text-slate-950 hover:bg-cyan-400 shadow"
               >
                 3D 확대
               </button>

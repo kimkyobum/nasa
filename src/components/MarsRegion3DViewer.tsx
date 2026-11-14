@@ -502,34 +502,128 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
     const skirtMesh = new THREE.Mesh(skirtGeo, skirtMat);
     scene.add(skirtMesh);
 
-    // Sleek Sci-Fi Hologram Beacon Generator
-    const createSleekBeacon = () => {
+    // 3D Martian Bio-Dome Greenhouse Generator
+    const createBioDomeFarm = () => {
       const group = new THREE.Group();
 
-      const baseGeo = new THREE.BoxGeometry(0.18, 0.04, 0.18);
-      const baseMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8, roughness: 0.2 });
+      // 1. Circular pressurized base foundation
+      const baseGeo = new THREE.CylinderGeometry(0.38, 0.40, 0.06, 24);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.8,
+        roughness: 0.3,
+      });
       const base = new THREE.Mesh(baseGeo, baseMat);
-      base.position.y = 0.02;
+      base.position.y = 0.03;
       group.add(base);
 
-      const postGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 12);
-      const postMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.6, transparent: true, opacity: 0.85 });
-      const post = new THREE.Mesh(postGeo, postMat);
-      post.position.y = 0.32;
-      group.add(post);
+      // 2. Geodesic Transparent Bio-Dome (Glass / ETFE Shield)
+      const domeGeo = new THREE.SphereGeometry(
+        0.35,
+        20,
+        14,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+      );
+      const domeMat = new THREE.MeshStandardMaterial({
+        color: 0x6ee7b7,
+        emissive: 0x10b981,
+        emissiveIntensity: 0.45,
+        transparent: true,
+        opacity: 0.58,
+        roughness: 0.1,
+        metalness: 0.2,
+      });
+      const dome = new THREE.Mesh(domeGeo, domeMat);
+      dome.position.y = 0.06;
+      group.add(dome);
 
-      const diamondGeo = new THREE.OctahedronGeometry(0.07, 0);
-      const diamondMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, emissive: 0x38bdf8, emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.9 });
-      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
-      diamond.position.y = 0.65;
+      // Dome structural frame ribs (wireframe dome ring)
+      const ribsGeo = new THREE.SphereGeometry(
+        0.352,
+        10,
+        8,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+      );
+      const ribsMat = new THREE.MeshBasicMaterial({
+        color: 0x34d399,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.4,
+      });
+      const ribs = new THREE.Mesh(ribsGeo, ribsMat);
+      ribs.position.y = 0.06;
+      group.add(ribs);
+
+      // 3. Interior Hydroponic Racks & Lush Green Crops
+      const plantMat = new THREE.MeshStandardMaterial({
+        color: 0x22c55e,
+        emissive: 0x15803d,
+        emissiveIntensity: 0.9,
+        roughness: 0.3,
+      });
+      [-0.14, 0, 0.14].forEach((px) => {
+        [-0.12, 0.12].forEach((pz) => {
+          const rackGeo = new THREE.BoxGeometry(0.08, 0.03, 0.14);
+          const rack = new THREE.Mesh(rackGeo, baseMat);
+          rack.position.set(px, 0.075, pz);
+          group.add(rack);
+
+          const plantGeo = new THREE.SphereGeometry(0.045, 8, 8);
+          plantGeo.scale(1, 0.8, 1.4);
+          const plant = new THREE.Mesh(plantGeo, plantMat);
+          plant.position.set(px, 0.12, pz);
+          group.add(plant);
+        });
+      });
+
+      // 4. Center Bio-Core with glowing green light
+      const coreGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.28, 12);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0x10b981,
+        emissive: 0x34d399,
+        emissiveIntensity: 1.8,
+      });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      core.position.y = 0.2;
+      group.add(core);
+
+      const domeLight = new THREE.PointLight(0x10b981, 1.8, 3.5, 1.5);
+      domeLight.position.set(0, 0.25, 0);
+      group.add(domeLight);
+
+      // 5. Airlock tunnel entrance
+      const airlockGeo = new THREE.BoxGeometry(0.12, 0.1, 0.18);
+      const airlock = new THREE.Mesh(airlockGeo, baseMat);
+      airlock.position.set(0, 0.08, 0.36);
+      group.add(airlock);
+
+      // 6. Floating Hologram Crop Sprout / Status Icon above the dome
+      const haloGeo = new THREE.TorusGeometry(0.16, 0.008, 12, 28);
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: 0x10b981,
+        transparent: true,
+        opacity: 0.85,
+      });
+      const halo = new THREE.Mesh(haloGeo, haloMat);
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 0.52;
+      group.add(halo);
+
+      const beaconDiamondGeo = new THREE.OctahedronGeometry(0.06, 0);
+      const beaconDiamondMat = new THREE.MeshStandardMaterial({
+        color: 0xd1fae5,
+        emissive: 0x10b981,
+        emissiveIntensity: 1.8,
+      });
+      const diamond = new THREE.Mesh(beaconDiamondGeo, beaconDiamondMat);
+      diamond.position.y = 0.52;
       group.add(diamond);
-
-      const ringGeo = new THREE.TorusGeometry(0.14, 0.008, 16, 32);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.65;
-      group.add(ring);
 
       return group;
     };
@@ -576,11 +670,23 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
       head.position.set(0, 0.32, -0.1);
       group.add(head);
 
+      // Dual bright front headlights pointing in -Z forward direction
+      const hlGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.02, 12);
+      hlGeo.rotateX(Math.PI / 2);
+      const hlMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const leftHl = new THREE.Mesh(hlGeo, hlMat);
+      leftHl.position.set(-0.07, 0.1, -0.16);
+      group.add(leftHl);
+
+      const rightHl = new THREE.Mesh(hlGeo, hlMat);
+      rightHl.position.set(0.07, 0.1, -0.16);
+      group.add(rightHl);
+
       return group;
     };
 
-    // 8. Sleek Target Beacon
-    const beaconGroup = createSleekBeacon();
+    // 8. 3D Martian Bio-Dome Farm (Destination & Target Base)
+    const beaconGroup = createBioDomeFarm();
     scene.add(beaconGroup);
 
     // 9. Sleek Traveling Rover Marker along Route
@@ -659,6 +765,9 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
     let currentBeaconXZ: [number, number] = [0, 0];
     let targetBeaconXZ: [number, number] = [0, 0];
     let travelProgress = 0; // 0 -> 1 traveling along route automatically
+    let savedRoverGps: { lat: number; lon: number } | null = null;
+    let lastPatchShiftTime = 0;
+    let pendingShiftOffset: { x: number; z: number } | null = null;
 
     let orbitGlideActive = false;
     const orbitGoalTarget = new THREE.Vector3(0, 0.2, 0);
@@ -1087,12 +1196,38 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
 
       if (routeSamples.length > 0) {
         roverGroup.visible = true;
-        travelProgress = 0;
+        if (savedRoverGps) {
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < routeSamples.length; i++) {
+            const d = Math.hypot(
+              routeSamples[i].lat - savedRoverGps.lat,
+              wrapDeltaLon(routeSamples[i].lon, savedRoverGps.lon)
+            );
+            if (d < bestDist) {
+              bestDist = d;
+              bestIdx = i;
+            }
+          }
+          travelProgress = bestIdx / Math.max(1, routeSamples.length - 1);
+        } else {
+          travelProgress = 0;
+        }
+
+        // Place destination beacon at route end (never on top of rover)
+        const lastSample = routeSamples[routeSamples.length - 1];
+        beaconGroup.position.set(
+          lastSample.x,
+          sampleTerrainWorldY(lastSample.x, lastSample.z),
+          lastSample.z
+        );
+        beaconGroup.visible = true;
       } else {
         roverGroup.visible = false;
         currentBeaconXZ = [0, 0];
         targetBeaconXZ = [0, 0];
         beaconGroup.position.set(0, sampleTerrainWorldY(0, 0), 0);
+        beaconGroup.visible = true;
       }
     };
 
@@ -1166,36 +1301,77 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
         stillAnimating = true;
       }
 
-      // 3. Position rover and beacon at current travelProgress (static unless clicked)
+      // 3. Rover positioning, Roadview Cruise & Smooth Terrain Tile Streaming
       if (routeSamples.length > 0) {
+        if (stateRef.current.cameraViewMode === 'roadview') {
+          // Slow, smooth cruising along the road
+          const cruiseSpeed = 0.038;
+          travelProgress += delta * cruiseSpeed;
+          if (travelProgress > 1.0) {
+            travelProgress = 1.0;
+          }
+          stillAnimating = true;
+        }
+
         const sampleIdx = travelProgress * (routeSamples.length - 1);
         const s = getSampleAtFloat(sampleIdx);
         if (s) {
-          roverGroup.position.set(s.x, s.y + 0.12, s.z);
-          const yaw = Math.atan2(-s.tz, s.tx);
+          savedRoverGps = { lat: s.lat, lon: s.lon };
+          roverGroup.position.set(s.x, s.y + 0.08, s.z);
+
+          // Correct rover yaw: local front is -Z, so Math.atan2(-s.tx, -s.tz)
+          const yaw = Math.atan2(-s.tx, -s.tz);
           roverGroup.rotation.y = yaw;
 
-          currentBeaconXZ = [s.x, s.z];
-          beaconGroup.position.set(s.x, s.y, s.z);
+          // Seamless map streaming: when rover moves near edge in Roadview mode, pull in the next map patch ahead!
+          const distFromCenter = Math.hypot(s.x, s.z);
+          const now = performance.now();
+          if (
+            stateRef.current.cameraViewMode === 'roadview' &&
+            (distFromCenter > 2.0 || travelProgress > 0.72) &&
+            now - lastPatchShiftTime > 3500
+          ) {
+            const distToDest = stateRef.current.destCoord
+              ? Math.hypot(
+                  s.lat - stateRef.current.destCoord.lat,
+                  wrapDeltaLon(s.lon, stateRef.current.destCoord.lon)
+                )
+              : 1;
 
-          // If in Roadview mode or auto-following, keep camera smoothly following behind & above rover without getting blocked by walls
+            if (distToDest > 0.05) {
+              lastPatchShiftTime = now;
+              pendingShiftOffset = { x: s.x, z: s.z };
+              stateRef.current.onSelectLatLon?.(s.lat, s.lon);
+            }
+          }
+
+          // If in Roadview mode or auto-following, keep camera smoothly following behind rover looking forward
           if (stateRef.current.cameraViewMode === 'roadview' && !userDragging) {
-            targetFov = 56;
-            const eyeY = s.y + 0.48;
-            const followBack = 2.4;
+            targetFov = 54;
+            const eyeY = s.y + 0.42;
+            const followBack = 2.0;
             const targetCamX = s.x - s.tx * followBack;
             const targetCamZ = s.z - s.tz * followBack;
-            const safeCamY = Math.max(eyeY + 0.15, sampleTerrainWorldY(targetCamX, targetCamZ) + 0.35);
+            const safeCamY = Math.max(
+              eyeY + 0.22,
+              sampleTerrainWorldY(targetCamX, targetCamZ) + 0.38
+            );
+
+            // Camera looks ahead down the road
+            const lookDist = 2.4;
+            const lookTargetX = s.x + s.tx * lookDist;
+            const lookTargetZ = s.z + s.tz * lookDist;
+            const lookTargetY = sampleTerrainWorldY(lookTargetX, lookTargetZ) + 0.25;
 
             controls.target.set(
-              THREE.MathUtils.damp(controls.target.x, s.x, 5.0, delta),
-              THREE.MathUtils.damp(controls.target.y, eyeY, 5.0, delta),
-              THREE.MathUtils.damp(controls.target.z, s.z, 5.0, delta)
+              THREE.MathUtils.damp(controls.target.x, lookTargetX, 5.5, delta),
+              THREE.MathUtils.damp(controls.target.y, lookTargetY, 5.5, delta),
+              THREE.MathUtils.damp(controls.target.z, lookTargetZ, 5.5, delta)
             );
             camera.position.set(
-              THREE.MathUtils.damp(camera.position.x, targetCamX, 5.0, delta),
-              THREE.MathUtils.damp(camera.position.y, safeCamY, 5.0, delta),
-              THREE.MathUtils.damp(camera.position.z, targetCamZ, 5.0, delta)
+              THREE.MathUtils.damp(camera.position.x, targetCamX, 5.5, delta),
+              THREE.MathUtils.damp(camera.position.y, safeCamY, 5.5, delta),
+              THREE.MathUtils.damp(camera.position.z, targetCamZ, 5.5, delta)
             );
 
             const halfLimit = TERRAIN_SIZE * 0.38;
@@ -1436,6 +1612,7 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
       const s = nearest.sample;
       const sy = sampleTerrainWorldY(s.x, s.z);
       travelProgress = nearest.progress;
+      savedRoverGps = { lat: s.lat, lon: s.lon };
       targetBeaconXZ = [s.x, s.z];
 
       if (stateRef.current.cameraViewMode === 'orbit') {
@@ -1485,6 +1662,14 @@ export const MarsRegion3DViewer: React.FC<MarsRegion3DViewerProps> = ({
       rawHeights = heights;
       applyElevationFromHeights(rawHeights, currentRelief);
       rebuildRoute3D();
+
+      if (pendingShiftOffset) {
+        camera.position.x -= pendingShiftOffset.x;
+        camera.position.z -= pendingShiftOffset.z;
+        controls.target.x -= pendingShiftOffset.x;
+        controls.target.z -= pendingShiftOffset.z;
+        pendingShiftOffset = null;
+      }
 
       texCtx.fillStyle = '#5c2f20';
       texCtx.fillRect(0, 0, 512, 512);

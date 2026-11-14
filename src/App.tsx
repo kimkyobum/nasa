@@ -6,21 +6,27 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
+  Droplets,
   Eye,
   Globe2,
   HelpCircle,
   Layers,
+  Leaf,
   MapPin,
   Minus,
   Navigation,
   Plus,
   RotateCcw,
   Search,
+  Sparkles,
+  Sprout,
   X,
 } from 'lucide-react';
 import { MarsMapCanvas } from './components/MarsMapCanvas';
 import { MarsRegionSidePanel } from './components/MarsRegionSidePanel';
 import { RouteElevationChart } from './components/RouteElevationChart';
+import { MarsFarmModal } from './components/MarsFarmModal';
+import { AgriSoilProtocolView } from './components/AgriSoilProtocolView';
 import {
   MARS_LANDMARKS,
   REGION_PRESETS,
@@ -43,7 +49,7 @@ import {
 import { matchesHangulOrText } from './utils/hangulSearch';
 import { findMarsRouteFromNasaTiles } from './utils/pathfinding';
 
-type ActiveDrawer = 'none' | 'place' | 'search' | 'nav' | 'layers' | 'inspect';
+type ActiveDrawer = 'none' | 'farm' | 'place' | 'search' | 'nav' | 'layers' | 'inspect';
 
 const EMPTY_ROUTE: RouteResult = {
   found: false,
@@ -138,6 +144,7 @@ export default function App() {
   const [fullscreen3D, setFullscreen3D] = useState<boolean>(false);
   const [regionsOpen, setRegionsOpen] = useState<boolean>(false);
   const [chartOpen, setChartOpen] = useState<boolean>(false);
+  const [farmModalOpen, setFarmModalOpen] = useState<boolean>(false);
 
   const [regionId, setRegionId] = useState<RegionId>('global');
   const [baseLayer, setBaseLayer] = useState<MarsBaseLayerId>('viking');
@@ -150,7 +157,7 @@ export default function App() {
 
   const [startCoord, setStartCoord] = useState<{ lat: number; lon: number } | null>(null);
   const [destCoord, setDestCoord] = useState<{ lat: number; lon: number } | null>(null);
-  const [clickTool, setClickTool] = useState<ClickTool>('start');
+  const [clickTool, setClickTool] = useState<ClickTool>(null);
   const [navMode, setNavMode] = useState<NavigationMode>('safe');
 
   const [layers, setLayers] = useState<SensorLayers>({
@@ -307,7 +314,8 @@ export default function App() {
         setClickTool(null);
         if (near) setActiveDrawer('place');
       } else {
-        setActiveDrawer('place');
+        // Open precision inspect panel on map click
+        setActiveDrawer('inspect');
       }
     },
     [regionsOpen, clickTool, destCoord]
@@ -478,112 +486,110 @@ export default function App() {
   const drawerWidthPx = customDrawerWidth;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#030508] text-slate-100 flex flex-row">
-      {/* Left Docked Navigation Rail (Clean, off the map canvas) */}
+    <div className="relative h-screen w-screen overflow-hidden bg-[#030508] text-slate-100">
+      {/* Solid Dark Left Navigation Rail (clean, high-contrast, black) */}
       <nav
         aria-label="주 메뉴"
-        className="w-[68px] h-full bg-[#070c16] border-r border-white/15 flex flex-col items-center justify-between py-3 z-40 shrink-0 select-none"
+        className="absolute top-0 bottom-0 left-0 w-[68px] h-full bg-[#070c16] border-r border-white/15 flex flex-col items-center justify-between py-3 z-40 select-none shadow-2xl"
       >
         <div className="flex flex-col items-center w-full gap-1.5">
-          {/* Orbital Brand Logo (resets view) */}
+          {/* Bio-Farm Mars Brand Logo */}
           <button
             type="button"
             onClick={() => {
               handleResetView();
               setRegionsOpen(false);
             }}
-            title="THE VISION OF MARS · WATER EXTRACTION (시점 초기화)"
-            className="w-12 py-1.5 mb-1.5 rounded-xl flex flex-col items-center gap-1 hover:bg-white/[0.06] transition-colors group"
+            title="The Vision of Mars and warter extraction (시점 초기화)"
+            className="w-12 py-1.5 mb-1 rounded-xl flex flex-col items-center gap-1 hover:bg-white/[0.06] transition-colors group"
           >
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 28 28"
-              fill="none"
-              aria-hidden="true"
-              className="text-white transition-transform duration-300 group-hover:scale-105"
-            >
-              <circle
-                cx="14"
-                cy="14"
-                r="11.5"
-                stroke="currentColor"
-                strokeOpacity="0.28"
-                strokeWidth="1"
-              />
-              <ellipse
-                cx="14"
-                cy="14"
-                rx="13"
-                ry="4.8"
-                transform="rotate(-24 14 14)"
-                stroke="#38BDF8"
-                strokeWidth="1.2"
-              />
-              <circle
-                cx="14"
-                cy="14"
-                r="5.2"
-                fill="#D97757"
-                stroke="#070c16"
-                strokeWidth="1.2"
-              />
-              <circle cx="24" cy="9.5" r="1.4" fill="#38BDF8" />
-            </svg>
-            <span className="text-[8.5px] font-bold tracking-[0.14em] text-slate-200 leading-none">
+            <div className="relative w-7 h-7 flex items-center justify-center">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 28 28"
+                fill="none"
+                aria-hidden="true"
+                className="transition-transform duration-300 group-hover:scale-105"
+              >
+                <circle cx="14" cy="14" r="8.5" fill="#C2410C" stroke="#ea580c" strokeWidth="1" />
+                <ellipse cx="14" cy="14" rx="12.5" ry="4.5" transform="rotate(-20 14 14)" stroke="#38BDF8" strokeWidth="1.2" strokeDasharray="2 2" />
+                <path d="M14 17 C14 12, 10 9, 7 9 C7 13, 10 17, 14 17 Z" fill="#22C55E" />
+                <path d="M14 17 C14 11, 19 8, 22 9 C22 13, 18 17, 14 17 Z" fill="#4ADE80" />
+                <circle cx="20" cy="8.5" r="1.6" fill="#38BDF8" />
+              </svg>
+            </div>
+            <span className="text-[9px] font-bold tracking-[0.12em] text-slate-200 leading-none">
               MARS
             </span>
           </button>
 
-          <div className="w-8 h-px bg-white/10 mb-1" />
+          <div className="w-8 h-px bg-white/10 mb-0.5" />
 
-          {/* Primary Rail Navigation Buttons */}
+          {/* 1. Primary Bio-Farm Agriculture Button */}
+          <button
+            type="button"
+            onClick={() => openDrawerFromMenu('farm')}
+            className={`relative w-full py-2 flex flex-col items-center gap-1 transition-colors ${
+              activeDrawer === 'farm'
+                ? 'text-emerald-300 bg-emerald-500/20'
+                : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-500/10'
+            }`}
+          >
+            {activeDrawer === 'farm' && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-emerald-400" />
+            )}
+            <Sprout className="w-[18px] h-[18px]" strokeWidth={2.2} />
+            <span className="text-[10px] font-bold">온실 농경</span>
+          </button>
+
+          {/* 2. Primary Rail Navigation Buttons */}
           <button
             type="button"
             onClick={() => openDrawerFromMenu('place')}
-            className={`relative w-full py-2.5 flex flex-col items-center gap-1 transition-colors ${
+            className={`relative w-full py-2 flex flex-col items-center gap-1 transition-colors ${
               activeDrawer === 'place'
-                ? 'text-sky-300 bg-sky-500/12'
+                ? 'text-sky-300 bg-sky-500/15'
                 : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
             }`}
           >
             {activeDrawer === 'place' && (
               <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-sky-400" />
             )}
-            <MapPin className="w-[18px] h-[18px]" strokeWidth={1.8} />
+            <MapPin className="w-[17px] h-[17px]" strokeWidth={1.8} />
             <span className="text-[10px] font-medium">지점</span>
           </button>
 
           <button
             type="button"
             onClick={() => openDrawerFromMenu('search')}
-            className={`relative w-full py-2.5 flex flex-col items-center gap-1 transition-colors ${
+            className={`relative w-full py-2 flex flex-col items-center gap-1 transition-colors ${
               activeDrawer === 'search'
-                ? 'text-sky-300 bg-sky-500/12'
+                ? 'text-sky-300 bg-sky-500/15'
                 : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
             }`}
           >
             {activeDrawer === 'search' && (
               <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-sky-400" />
             )}
-            <Search className="w-[18px] h-[18px]" strokeWidth={1.8} />
+            <Search className="w-[17px] h-[17px]" strokeWidth={1.8} />
             <span className="text-[10px] font-medium">검색</span>
           </button>
 
           <button
             type="button"
             onClick={() => openDrawerFromMenu('nav')}
-            className={`relative w-full py-2.5 flex flex-col items-center gap-1 transition-colors ${
+            className={`relative w-full py-2 flex flex-col items-center gap-1 transition-colors ${
               activeDrawer === 'nav'
-                ? 'text-emerald-300 bg-emerald-500/12'
+                ? 'text-cyan-300 bg-cyan-500/15'
                 : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
             }`}
           >
             {activeDrawer === 'nav' && (
-              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-emerald-400" />
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-cyan-400" />
             )}
-            <Navigation className="w-[18px] h-[18px]" strokeWidth={1.8} />
-            <span className="text-[10px] font-medium">경로</span>
+            <Navigation className="w-[17px] h-[17px]" strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">수송로</span>
           </button>
 
           <button
@@ -673,11 +679,11 @@ export default function App() {
           {regionsOpen && (
             <div className="absolute left-[72px] bottom-2 w-60 bg-[#0b1220]/[0.96] border border-white/25 rounded-xl p-2.5 shadow-2xl z-50 text-xs">
               <div className="px-1.5 pb-2 mb-2 border-b border-white/15">
-                <div className="text-[11px] font-bold tracking-wider text-white">
-                  THE VISION OF MARS
+                <div className="text-[11px] font-bold tracking-tight text-white">
+                  The Vision of Mars and warter extraction
                 </div>
-                <div className="text-[9px] font-mono tracking-widest text-sky-300/90">
-                  WATER EXTRACTION · 구역 이동
+                <div className="text-[9px] font-mono tracking-wider text-sky-300/90 mt-0.5">
+                  구역 이동
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-1">
@@ -702,7 +708,7 @@ export default function App() {
       </nav>
 
       {/* Main Unobstructed Fullscreen Mars Map + Left-Wall Sliding Drawer */}
-      <main className="relative flex-1 h-full overflow-hidden">
+      <main className="absolute inset-0 w-full h-full overflow-hidden">
         <MarsMapCanvas
           baseLayer={baseLayer}
           centerLat={viewLat}
@@ -731,59 +737,53 @@ export default function App() {
           onShowArGuide={() => setArGuideOpen(true)}
         />
 
-        {/* Borderless Route Distance & Rover Time Readout (shifts cleanly alongside open left drawer) */}
+        {/* Prominent Subsurface Water & Bio-Farm Agritech HUD */}
         <div
-          style={{ left: `${isDrawerOpen ? drawerWidthPx + 22 : 20}px` }}
-          className="absolute top-4 z-20 flex flex-col gap-1 pointer-events-auto transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px` }}
+          className="absolute top-4 z-20 flex items-center gap-2 pointer-events-auto transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex-wrap"
         >
-          {startCoord && destCoord ? (
+          <button
+            type="button"
+            onClick={() => setFarmModalOpen(true)}
+            className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-[#070c16] border border-white/20 text-left shadow-xl hover:bg-slate-900 transition-colors hover:border-sky-400/60 group"
+          >
+            <div className="w-7 h-7 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-sky-400">
+              <Droplets className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-sky-300 font-mono">
+                  지하수 {inspectedPoint.combinedWaterProb}% · 추출 {Math.round(inspectedPoint.combinedWaterProb * 3.4)}L/일
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-white flex items-center gap-1.5">
+                <span>{selectedLandmark ? selectedLandmark.nameKo : '선택 지점 온실 재배'}</span>
+                <span className="text-[9px] font-normal text-slate-400 font-mono">
+                  [상세 보기]
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* 2. Water-to-Greenhouse Route Logistics Readout */}
+          {startCoord && destCoord && (
             <button
               type="button"
               onClick={() => openDrawerFromMenu('nav')}
-              className="flex items-center gap-4 text-left transition-opacity hover:opacity-85 [filter:drop-shadow(0_2px_3px_rgba(0,0,0,1))_drop-shadow(0_0_10px_rgba(0,0,0,0.92))]"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[#090d16] border border-cyan-500/45 text-left shadow-2xl hover:bg-slate-900 transition-all"
             >
-              {isRouting ? (
-                <span className="font-mono text-sm font-semibold text-white">
-                  경로 분석 중...
-                </span>
-              ) : route.found ? (
-                <>
-                  <div>
-                    <div className="text-[10px] font-bold tracking-wider text-amber-300 leading-none mb-0.5">
-                      총 거리
-                    </div>
-                    <div className="text-2xl font-mono font-extrabold text-white tabular-nums leading-none">
-                      {route.totalDistanceKm.toLocaleString()}
-                      <span className="text-xs font-semibold text-slate-200 ml-1">km</span>
-                    </div>
-                  </div>
-                  <span className="h-7 w-px bg-white/40" />
-                  <div>
-                    <div className="text-[10px] font-bold tracking-wider text-sky-300 leading-none mb-0.5">
-                      로버 이동
-                    </div>
-                    <div className="text-2xl font-mono font-extrabold text-cyan-300 tabular-nums leading-none">
-                      {route.estimatedHoursRover}
-                      <span className="text-xs font-semibold text-cyan-100 ml-0.5">h</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <span className="font-mono text-base text-rose-300 font-bold">
-                  이동 불가 경로
-                </span>
-              )}
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
+                <Navigation className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="text-[9px] text-cyan-300 font-mono tracking-wider uppercase font-semibold">
+                  수자원 ➔ 온실 수송로
+                </div>
+                <div className="text-xs font-mono font-bold text-white">
+                  {route.totalDistanceKm.toLocaleString()} km · 로버 {route.estimatedHoursRover}h
+                </div>
+              </div>
             </button>
-          ) : (
-            <div className="flex items-baseline gap-2.5 text-xs [filter:drop-shadow(0_2px_3px_rgba(0,0,0,1))_drop-shadow(0_0_8px_rgba(0,0,0,0.9))]">
-              <span className="font-mono font-semibold text-white tabular-nums">
-                {formatCoord(activePoint.lat, activePoint.lon)}
-              </span>
-              <span className="text-white/45">|</span>
-              <span className="font-mono font-bold text-cyan-300 tabular-nums">
-                지하수 {activePoint.combinedWaterProb}%
-              </span>
-            </div>
           )}
         </div>
 
@@ -993,7 +993,7 @@ export default function App() {
           className={
             isPlaceFullscreen
               ? 'fixed inset-0 z-50 flex items-stretch pointer-events-none'
-              : 'absolute top-0 bottom-0 left-0 z-30 flex items-stretch pointer-events-none'
+              : 'absolute top-0 bottom-0 left-[68px] z-30 flex items-stretch pointer-events-none'
           }
         >
           <aside
@@ -1002,17 +1002,17 @@ export default function App() {
                 ? { width: '100vw' }
                 : { width: isDrawerOpen ? `${drawerWidthPx}px` : '0px' }
             }
-            className={`relative h-full overflow-hidden bg-[#0a111e]/35 backdrop-blur-2xl pointer-events-auto ${
+            className={`relative h-full overflow-hidden bg-[#0a111e] pointer-events-auto ${
               isPlaceFullscreen
                 ? 'w-screen border-r-0'
-                : `max-w-[calc(100vw-68px)] border-r border-white/20 shadow-[14px_0_40px_rgba(0,0,0,0.35)] ${
+                : `max-w-[calc(100vw-68px)] border-r border-white/15 shadow-[14px_0_40px_rgba(0,0,0,0.7)] ${
                     isResizingDrawer
                       ? 'transition-none'
                       : 'transition-[width,opacity,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
                   }`
             } ${
               isDrawerOpen
-                ? 'opacity-100 border-white/18'
+                ? 'opacity-100 border-white/15'
                 : 'opacity-0 border-transparent'
             }`}
           >
@@ -1027,10 +1027,10 @@ export default function App() {
               }`}
             >
               {/* Branded Panel Header */}
-              <div className="px-4 py-3 border-b border-white/15 flex items-center justify-between bg-white/[0.02] shrink-0">
+              <div className="px-4 py-3 border-b border-white/15 flex items-center justify-between bg-black/40 shrink-0">
                 <div className="min-w-0">
-                  <div className="text-[9px] font-mono tracking-[0.2em] text-sky-300/90 uppercase">
-                    THE VISION OF MARS · WATER EXTRACTION
+                  <div className="text-[10px] font-mono tracking-wider text-sky-400 font-semibold truncate">
+                    The Vision of Mars and warter extraction
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {activeDrawer === 'inspect' && (
@@ -1044,17 +1044,19 @@ export default function App() {
                       </button>
                     )}
                     <span className="text-[13px] font-bold text-white tracking-wide truncate">
-                      {activeDrawer === 'place'
-                        ? isPlaceFullscreen
-                          ? '3D AR 전체화면 · 경로 탐색'
-                          : '지점 확대 · 3D AR 지형'
-                        : activeDrawer === 'search'
-                          ? '화성 지형 검색'
-                          : activeDrawer === 'nav'
-                            ? '경로 네비게이션'
-                            : activeDrawer === 'layers'
-                              ? '위성 · 센서 레이어'
-                              : '경로 · 지점 정밀 분석'}
+                      {activeDrawer === 'farm'
+                        ? '온실 재배 · 수자원 관제'
+                        : activeDrawer === 'place'
+                          ? isPlaceFullscreen
+                            ? '3D AR 전체화면 · 경로 탐색'
+                            : '지점 확대 · 3D AR 지형'
+                          : activeDrawer === 'search'
+                            ? '화성 지형 검색'
+                            : activeDrawer === 'nav'
+                              ? '수자원 ➔ 온실 수송로'
+                              : activeDrawer === 'layers'
+                                ? '위성 · 센서 레이어'
+                                : '경로 · 지점 정밀 분석'}
                     </span>
                   </div>
                 </div>
@@ -1078,7 +1080,41 @@ export default function App() {
                     : 'space-y-4 overflow-y-auto'
                 }`}
               >
-                {/* 0. PLACE PREVIEW PANEL (ZOOMED SATELLITE + RESIZABLE/FULLSCREEN 3D AR) */}
+                {/* 0. AGRICULTURE & GREENHOUSE DRAWER */}
+                {activeDrawer === 'farm' && (
+                  <div className="space-y-4">
+                    <div className="p-3.5 bg-[#111622] border border-white/15 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Sprout className="w-4 h-4 text-sky-400" />
+                          선택 지점 온실 · 작물 상세 분석
+                        </span>
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-slate-800 text-slate-200 border border-white/10">
+                          지하수 {inspectedPoint.combinedWaterProb}%
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFarmModalOpen(true)}
+                        className="w-full py-2 text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Sprout className="w-3.5 h-3.5" />
+                        추천 작물 · 상세 재배법 열기
+                      </button>
+                    </div>
+
+                    <AgriSoilProtocolView
+                      selectedCell={inspectedPoint}
+                      regionNameKo={
+                        selectedLandmark
+                          ? selectedLandmark.nameKo
+                          : formatCoord(inspectedPoint.lat, inspectedPoint.lon)
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* 1. PLACE PREVIEW PANEL (ZOOMED SATELLITE + RESIZABLE/FULLSCREEN 3D AR) */}
                 {activeDrawer === 'place' && (
                   <MarsRegionSidePanel
                     point={inspectedPoint}
@@ -1806,7 +1842,7 @@ export default function App() {
               }
               title={isDrawerOpen ? '패널 접기' : '패널 펼치기'}
               aria-label={isDrawerOpen ? '패널 접기' : '패널 펼치기'}
-              className="self-center -ml-px w-5 h-12 bg-[#0a111e]/[0.95] hover:bg-[#131d31] border border-l-0 border-white/25 rounded-r-lg flex items-center justify-center text-slate-200 hover:text-white shadow-lg pointer-events-auto transition-colors"
+              className="self-center -ml-px w-5 h-12 bg-slate-900/40 hover:bg-slate-800/60 backdrop-blur-md border border-l-0 border-white/25 rounded-r-lg flex items-center justify-center text-slate-200 hover:text-white shadow-lg pointer-events-auto transition-colors"
             >
               {isDrawerOpen ? (
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -1820,7 +1856,7 @@ export default function App() {
         {/* Optional Floating Route Elevation Chart Synced With Map Beacon (Overlap-free) */}
         {chartOpen && (
           <div
-            style={{ left: `${isDrawerOpen ? drawerWidthPx + 20 : 16}px` }}
+            style={{ left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px` }}
             className="absolute bottom-4 right-[124px] z-20 shadow-2xl transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
             <RouteElevationChart
@@ -1834,6 +1870,32 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Smart Bio-Dome Greenhouse Cultivation Modal (Pops out on map click or via top HUD) */}
+      {farmModalOpen && inspectedPoint && (
+        <MarsFarmModal
+          point={inspectedPoint}
+          landmark={selectedLandmark}
+          onClose={() => setFarmModalOpen(false)}
+          onSetAsWaterSource={(lat, lon) => {
+            setStartCoord({ lat, lon });
+            setClickTool(destCoord === null ? 'destination' : null);
+            setFarmModalOpen(false);
+          }}
+          onSetAsFarmTarget={(lat, lon) => {
+            setDestCoord({ lat, lon });
+            setClickTool(startCoord === null ? 'start' : null);
+            setActiveDrawer('place');
+            setFarmModalOpen(false);
+          }}
+          onViewIn3D={(lat, lon) => {
+            handleJumpToCoord(lat, lon);
+            setActiveDrawer('place');
+            setFullscreen3D(true);
+            setFarmModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
