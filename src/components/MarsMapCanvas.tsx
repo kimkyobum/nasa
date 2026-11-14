@@ -3,7 +3,6 @@ import { Compass } from 'lucide-react';
 import {
   MARS_LANDMARKS,
   getGlobalTelemetryAtlas,
-  normalizeLon,
   sampleMarsTelemetry,
 } from '../data/marsData';
 import {
@@ -23,10 +22,9 @@ interface MarsMapCanvasProps {
   ppd: number;
   onViewportChange: (lat: number, lon: number, ppd: number) => void;
   layers: SensorLayers;
-  minWaterThreshold: number;
-  maxSlopeThreshold: number;
-  startCoord: { lat: number; lon: number };
-  destCoord: { lat: number; lon: number };
+  layerOpacity: number;
+  startCoord: { lat: number; lon: number } | null;
+  destCoord: { lat: number; lon: number } | null;
   route: RouteResult;
   clickTool: ClickTool;
   arVisorMode: boolean;
@@ -35,6 +33,7 @@ interface MarsMapCanvasProps {
   landmarkTypeFilter: LandmarkType | 'all';
   onHoverPoint: (pt: MarsTelemetryPoint | null) => void;
   onMapClick: (pt: MarsTelemetryPoint) => void;
+  onPinClick?: (pin: 'start' | 'destination') => void;
   onSelectLandmark: (lm: Landmark | null) => void;
 }
 
@@ -50,7 +49,7 @@ type CachedTile =
 
 const tileCache = new Map<string, CachedTile>();
 
-// Pre-sort landmarks by tier once at module load so render loop never sorts 680 items per frame
+// Pre-sort landmarks by tier once at module load so render loop never sorts per frame
 const SORTED_LANDMARKS = [...MARS_LANDMARKS].sort((a, b) => a.tier - b.tier);
 
 // Cached label text widths so Canvas 2D measureText runs at most once per landmark
@@ -73,18 +72,78 @@ function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
 
+function getMinPpd(width: number, height: number): number {
+  return Math.max(2.3, Math.min(width / 360, height / 170) * 0.94);
+}
+
+function clampSingleMapViewport(
+  lat: number,
+  lon: number,
+  ppd: number,
+  width: number,
+  height: number
+) {
+  const minPpd = getMinPpd(width, height);
+  const nextPpd = clamp(ppd, minPpd, 140);
+
+  const halfScreenLon = width / 2 / nextPpd;
+  const maxPanLon =
+    halfScreenLon >= 178 ? 0 : Math.max(0, 180 - halfScreenLon * 0.92);
+  const nextLon = clamp(lon, -maxPanLon, maxPanLon);
+
+  const halfScreenLat = height / 2 / nextPpd;
+  const maxPanLat =
+    halfScreenLat >= 82 ? 0 : Math.max(0, 85 - halfScreenLat * 0.92);
+  const nextLat = clamp(lat, -maxPanLat, maxPanLat);
+
+  return { lat: nextLat, lon: nextLon, ppd: nextPpd };
+}
+
 function computeBearingDeg(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  let dLon = lon2 - lon1;
-  if (dLon > 180) dLon -= 360;
-  if (dLon < -180) dLon += 360;
+  const dLon = lon2 - lon1;
   const dLat = lat2 - lat1;
   const rad = Math.atan2(dLon, dLat);
   return Math.round(((rad * 180) / Math.PI + 360) % 360);
+}
+
+// Color ramp helper for MOLA elevation (-6000m .. +12000m)
+function elevationToRgb(elevM: number): [number, number, number] {
+  const t = clamp((elevM + 5500) / 16000, 0, 1);
+  if (t < 0.25) {
+    const k = t / 0.25;
+    return [
+      Math.round(37 + k * (14 - 37)),
+      Math.round(99 + k * (165 - 99)),
+      Math.round(235 + k * (233 - 235)),
+    ];
+  }
+  if (t < 0.5) {
+    const k = (t - 0.25) / 0.25;
+    return [
+      Math.round(14 + k * (34 - 14)),
+      Math.round(165 + k * (197 - 165)),
+      Math.round(233 + k * (94 - 233)),
+    ];
+  }
+  if (t < 0.75) {
+    const k = (t - 0.5) / 0.25;
+    return [
+      Math.round(34 + k * (245 - 34)),
+      Math.round(197 + k * (158 - 197)),
+      Math.round(94 + k * (11 - 94)),
+    ];
+  }
+  const k = (t - 0.75) / 0.25;
+  return [
+    Math.round(245 + k * (239 - 245)),
+    Math.round(158 + k * (68 - 158)),
+    Math.round(11 + k * (68 - 11)),
+  ];
 }
 
 export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
@@ -95,17 +154,18 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     ppd,
     onViewportChange,
     layers,
-    minWaterThreshold,
-    maxSlopeThreshold,
+    layerOpacity,
     startCoord,
     destCoord,
     route,
+    clickTool,
     arVisorMode,
     selectedPoint,
     selectedLandmark,
     landmarkTypeFilter,
     onHoverPoint,
     onMapClick,
+    onPinClick,
     onSelectLandmark,
   }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -132,12 +192,12 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     const syncTimerRef = useRef<number | null>(null);
     const lastHoverEmitRef = useRef<number>(0);
 
-    // Keep latest render inputs in refs so RAF drawScene is always fresh without recreating callbacks
     const propsRef = useRef({
       baseLayer,
       startCoord,
       destCoord,
       route,
+      clickTool,
       arVisorMode,
       selectedPoint,
       selectedLandmark,
@@ -150,6 +210,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       startCoord,
       destCoord,
       route,
+      clickTool,
       arVisorMode,
       selectedPoint,
       selectedLandmark,
@@ -173,7 +234,6 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           tileCache.set(key, { status: 'ready', img });
-          // Coalesce multiple arriving tiles into a single animation frame without React state churn
           scheduleDrawRef.current();
         };
         img.onerror = () => {
@@ -215,23 +275,32 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       return () => ro.disconnect();
     }, []);
 
-    // Resize GPU canvas backing store ONLY when dimensions actually change
+    // Resize GPU canvas backing store and clamp viewport when dimensions change
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(canvasSize.width * dpr);
       canvas.height = Math.round(canvasSize.height * dpr);
+
+      const clamped = clampSingleMapViewport(
+        viewRef.current.lat,
+        viewRef.current.lon,
+        viewRef.current.ppd,
+        canvasSize.width,
+        canvasSize.height
+      );
+      viewRef.current = clamped;
       scheduleDrawRef.current();
     }, [canvasSize]);
 
-    // Pre-render global scientific overlay texture ONLY when layer toggles/thresholds change (<2ms)
+    // Pre-render global scientific overlay texture when layers or opacity change (<2ms)
     useEffect(() => {
       const anyOverlay =
         layers.swimWater ||
+        layers.elevation ||
         layers.soilFertility ||
         layers.slopeHazard ||
-        layers.gammaRay ||
         layers.geothermal;
 
       hasOverlayRef.current = anyOverlay;
@@ -255,9 +324,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const img = octx.createImageData(atlas.width, atlas.height);
       const data = img.data;
       const total = atlas.width * atlas.height;
-      const { water, soil, gamma, geo, slopeX10 } = atlas;
-      const waterDenom = Math.max(10, 100 - minWaterThreshold);
-      const slopeLimitX10 = maxSlopeThreshold * 10;
+      const { water, soil, elevM, geo, slopeX10 } = atlas;
+      const alphaScale = clamp(layerOpacity, 0.2, 1.0);
 
       for (let i = 0; i < total; i++) {
         let r = 0;
@@ -265,53 +333,110 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         let b = 0;
         let a = 0;
 
-        if (layers.soilFertility && soil[i] >= 54) {
-          const t = clamp((soil[i] - 52) / 42, 0, 1);
-          r = 16;
-          g = 185;
-          b = 129;
-          a = Math.max(a, Math.round(t * 88));
+        // 1. MOLA Elevation color ramp (lowest layer so features stack clearly)
+        if (layers.elevation) {
+          const [er, eg, eb] = elevationToRgb(elevM[i]);
+          r = er;
+          g = eg;
+          b = eb;
+          a = Math.max(a, 115);
         }
-        if (layers.geothermal && geo[i] >= 38) {
-          const t = clamp((geo[i] - 38) / 60, 0, 1);
-          r = Math.round(r * 0.4 + 245 * 0.6);
-          g = Math.round(g * 0.4 + 158 * 0.6);
-          b = Math.round(b * 0.4 + 11 * 0.6);
-          a = Math.max(a, Math.round(t * 84));
+
+        // 2. SWIM Subsurface Water probability — continuous color depth from faint to deep vivid blue
+        if (layers.swimWater) {
+          const wVal = water[i];
+          const t = clamp((wVal - 10) / 86, 0, 1);
+          // Smooth gradient: light cyan (#38BDF8) -> rich deep ocean blue (#0284C7 -> #1D4ED8)
+          const wr = Math.round(56 - t * 44);
+          const wg = Math.round(195 - t * 88);
+          const wb = Math.round(248 - t * 18);
+          const wa = Math.round(14 + Math.pow(t, 1.25) * 145);
+          if (a === 0) {
+            r = wr;
+            g = wg;
+            b = wb;
+            a = wa;
+          } else {
+            const blend = wa / 160;
+            r = Math.round(r * (1 - blend) + wr * blend);
+            g = Math.round(g * (1 - blend) + wg * blend);
+            b = Math.round(b * (1 - blend) + wb * blend);
+            a = Math.max(a, wa);
+          }
         }
-        if (layers.gammaRay && gamma[i] >= 44) {
-          const t = clamp((gamma[i] - 44) / 52, 0, 1);
-          r = Math.round(r * 0.4 + 99 * 0.6);
-          g = Math.round(g * 0.4 + 102 * 0.6);
-          b = Math.round(b * 0.4 + 241 * 0.6);
-          a = Math.max(a, Math.round(t * 82));
+
+        // 3. CRISM Farming Suitable Soil
+        if (layers.soilFertility && soil[i] >= 36) {
+          const t = clamp((soil[i] - 36) / 56, 0, 1);
+          const sr = 16;
+          const sg = Math.round(165 + t * 50);
+          const sb = Math.round(115 + t * 25);
+          const sa = Math.round(18 + t * 115);
+          if (a === 0) {
+            r = sr;
+            g = sg;
+            b = sb;
+            a = sa;
+          } else {
+            r = Math.round(r * 0.45 + sr * 0.55);
+            g = Math.round(g * 0.45 + sg * 0.55);
+            b = Math.round(b * 0.45 + sb * 0.55);
+            a = Math.max(a, sa);
+          }
         }
-        if (layers.swimWater && water[i] >= minWaterThreshold) {
-          const t = clamp((water[i] - minWaterThreshold) / waterDenom, 0.15, 1);
-          r = 14;
-          g = 165;
-          b = 233;
-          a = Math.max(a, Math.round(t * 95));
+
+        // 4. Volcano & Geothermal Zones
+        if (layers.geothermal && geo[i] >= 26) {
+          const t = clamp((geo[i] - 26) / 70, 0, 1);
+          const gr = 249;
+          const gg = Math.round(158 - t * 55);
+          const gb = 16;
+          const ga = Math.round(22 + t * 125);
+          if (a === 0) {
+            r = gr;
+            g = gg;
+            b = gb;
+            a = ga;
+          } else {
+            r = Math.round(r * 0.4 + gr * 0.6);
+            g = Math.round(g * 0.4 + gg * 0.6);
+            b = Math.round(b * 0.4 + gb * 0.6);
+            a = Math.max(a, ga);
+          }
         }
-        if (layers.slopeHazard && slopeX10[i] >= slopeLimitX10) {
-          const t = clamp((slopeX10[i] - slopeLimitX10) / 140, 0.25, 1);
-          r = 244;
-          g = 63;
-          b = 94;
-          a = Math.max(a, Math.round(t * 125));
+
+        // 5. Steep Slope / Cliff Hazard Zones
+        if (layers.slopeHazard && slopeX10[i] >= 95) {
+          const t = clamp((slopeX10[i] - 95) / 140, 0.15, 1);
+          const hr = 244;
+          const hg = 63;
+          const hb = 94;
+          const ha = Math.round(35 + t * 135);
+          if (a === 0) {
+            r = hr;
+            g = hg;
+            b = hb;
+            a = ha;
+          } else {
+            r = Math.round(r * 0.35 + hr * 0.65);
+            g = Math.round(g * 0.35 + hg * 0.65);
+            b = Math.round(b * 0.35 + hb * 0.65);
+            a = Math.max(a, ha);
+          }
         }
 
         const p = i * 4;
         data[p] = r;
         data[p + 1] = g;
         data[p + 2] = b;
-        data[p + 3] = a;
+        data[p + 3] = Math.min(220, Math.round(a * alphaScale));
       }
 
       octx.putImageData(img, 0, 0);
       scheduleDrawRef.current();
-    }, [layers, minWaterThreshold, maxSlopeThreshold]);
+    }, [layers, layerOpacity]);
 
+    // Strictly render ONE single Mars map (-180..+180) without duplicating side-by-side
     const drawWmtsLayer = useCallback(
       (
         ctx: CanvasRenderingContext2D,
@@ -330,13 +455,13 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
 
         const halfLonSpan = width / 2 / curPpd;
         const halfLatSpan = height / 2 / curPpd;
-        const lonLeft = cLon - halfLonSpan;
-        const lonRight = cLon + halfLonSpan;
+        const lonLeft = clamp(cLon - halfLonSpan, -180, 180);
+        const lonRight = clamp(cLon + halfLonSpan, -180, 180);
         const latTop = clamp(cLat + halfLatSpan, -90, 90);
         const latBottom = clamp(cLat - halfLatSpan, -90, 90);
 
-        const colStart = Math.floor((lonLeft + 180) / tileDeg);
-        const colEnd = Math.floor((lonRight + 180) / tileDeg);
+        const colStart = clamp(Math.floor((lonLeft + 180) / tileDeg), 0, numCols - 1);
+        const colEnd = clamp(Math.floor((lonRight + 180) / tileDeg), 0, numCols - 1);
         const rowStart = clamp(Math.floor((90 - latTop) / tileDeg), 0, numRows - 1);
         const rowEnd = clamp(Math.floor((90 - latBottom) / tileDeg), 0, numRows - 1);
 
@@ -349,9 +474,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           const sy = height / 2 + (cLat - tileLatTop) * curPpd;
           const sh = (tileLatTop - tileLatBottom) * curPpd;
 
-          for (let rawC = colStart; rawC <= colEnd; rawC++) {
-            const c = ((rawC % numCols) + numCols) % numCols;
-            const tileLonLeft = -180 + rawC * tileDeg;
+          for (let c = colStart; c <= colEnd; c++) {
+            const tileLonLeft = -180 + c * tileDeg;
             const sx = width / 2 + (tileLonLeft - cLon) * curPpd;
             const sw = tileDeg * curPpd;
 
@@ -433,7 +557,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
 
       const idealZ = clamp(Math.round(Math.log2((curPpd * 180) / 256)), 0, 7);
 
-      // 1. Real NASA Mars Trek Imagery
+      // 1. Real NASA Mars Trek Imagery (single Mars -180..+180)
       if (curBaseLayer === 'viking') {
         drawWmtsLayer(ctx, 'viking', idealZ, 1.0, cLat, cLon, curPpd, width, height);
       } else if (curBaseLayer === 'mola') {
@@ -443,38 +567,38 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         drawWmtsLayer(ctx, 'mola', idealZ, 0.34, cLat, cLon, curPpd, width, height);
       }
 
-      // 2. GPU-blitted Scientific Overlay (<0.2ms, zero per-frame telemetry math!)
+      // 2. Single-Map GPU-blitted Scientific Overlay (-180..+180, 85..-85)
       if (hasOverlayRef.current && overlayCanvasRef.current) {
         const ov = overlayCanvasRef.current;
+        const dx = width / 2 + (-180 - cLon) * curPpd;
         const dy = height / 2 + (cLat - 85) * curPpd;
-        const dh = 170 * curPpd;
         const dw = 360 * curPpd;
-        const lonLeft = cLon - width / 2 / curPpd;
-        const lonRight = cLon + width / 2 / curPpd;
-        const wrapStart = Math.floor((lonLeft + 180) / 360);
-        const wrapEnd = Math.floor((lonRight + 180) / 360);
+        const dh = 170 * curPpd;
 
         ctx.save();
         ctx.imageSmoothingEnabled = true;
-        for (let w = wrapStart; w <= wrapEnd; w++) {
-          const worldLonLeft = -180 + w * 360;
-          const dx = width / 2 + (worldLonLeft - cLon) * curPpd;
-          ctx.drawImage(ov, 0, 0, ov.width, ov.height, dx, dy, dw, dh);
-        }
+        ctx.drawImage(ov, 0, 0, ov.width, ov.height, dx, dy, dw, dh);
         ctx.restore();
       }
 
-      const toScreen = (lat: number, lon: number) => {
-        let dLon = lon - cLon;
-        while (dLon > 180) dLon -= 360;
-        while (dLon < -180) dLon += 360;
-        return {
-          x: width / 2 + dLon * curPpd,
-          y: height / 2 + (cLat - lat) * curPpd,
-        };
-      };
+      // Subtle frame border around single Mars projection when zoomed out
+      const mapLeft = width / 2 + (-180 - cLon) * curPpd;
+      const mapTop = height / 2 + (cLat - 90) * curPpd;
+      const mapW = 360 * curPpd;
+      const mapH = 180 * curPpd;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mapLeft, mapTop, mapW, mapH);
+      ctx.restore();
 
-      // 3. Subtle NASA-style Graticule
+      // Linear single-map projection — zoom-invariant!
+      const toScreen = (lat: number, lon: number) => ({
+        x: width / 2 + (lon - cLon) * curPpd,
+        y: height / 2 + (cLat - lat) * curPpd,
+      });
+
+      // 3. Subtle NASA-style Graticule bounded inside single Mars [-180, 180]
       const stepDeg = curPpd < 5 ? 30 : curPpd < 11 ? 15 : curPpd < 24 ? 10 : 5;
       ctx.save();
       ctx.strokeStyle = curAr
@@ -486,128 +610,152 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         ? 'rgba(125, 211, 252, 0.72)'
         : 'rgba(226, 232, 240, 0.45)';
 
+      const gridLeftX = Math.max(0, mapLeft);
+      const gridRightX = Math.min(width, mapLeft + mapW);
+      const gridTopY = Math.max(0, mapTop);
+      const gridBotY = Math.min(height, mapTop + mapH);
+
       ctx.beginPath();
       for (let lat = -60; lat <= 60; lat += stepDeg) {
         const y = height / 2 + (cLat - lat) * curPpd;
-        if (y < 52 || y > height - 48) continue;
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        if (y < Math.max(52, gridTopY) || y > Math.min(height - 48, gridBotY)) continue;
+        ctx.moveTo(gridLeftX, y);
+        ctx.lineTo(gridRightX, y);
       }
-      const lonStart = Math.floor((cLon - width / 2 / curPpd) / stepDeg) * stepDeg;
-      const lonEnd = Math.ceil((cLon + width / 2 / curPpd) / stepDeg) * stepDeg;
+      const lonStart = Math.max(
+        -180,
+        Math.ceil((cLon - width / 2 / curPpd) / stepDeg) * stepDeg
+      );
+      const lonEnd = Math.min(
+        180,
+        Math.floor((cLon + width / 2 / curPpd) / stepDeg) * stepDeg
+      );
       for (let lon = lonStart; lon <= lonEnd; lon += stepDeg) {
         const x = width / 2 + (lon - cLon) * curPpd;
         if (x < 24 || x > width - 24) continue;
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.moveTo(x, gridTopY);
+        ctx.lineTo(x, gridBotY);
       }
       ctx.stroke();
 
       for (let lat = -60; lat <= 60; lat += stepDeg) {
         const y = height / 2 + (cLat - lat) * curPpd;
-        if (y < 52 || y > height - 48) continue;
+        if (y < Math.max(52, gridTopY) || y > Math.min(height - 48, gridBotY)) continue;
         ctx.fillText(
           lat === 0 ? '0° EQ' : lat > 0 ? `${lat}°N` : `${Math.abs(lat)}°S`,
-          14,
+          Math.max(14, gridLeftX + 10),
           y - 4
         );
       }
       for (let lon = lonStart; lon <= lonEnd; lon += stepDeg) {
         const x = width / 2 + (lon - cLon) * curPpd;
         if (x < 24 || x > width - 24) continue;
-        const norm = Math.round(normalizeLon(lon));
-        ctx.fillText(`${norm}°E`, x + 4, height - 64);
+        ctx.fillText(`${lon}°E`, x + 4, Math.min(height - 64, gridBotY - 8));
       }
       ctx.restore();
 
-      // 4. Computed A* Navigation Route (or Unreachable indicator)
-      if (curRoute.found && curRoute.points.length > 1) {
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        ctx.beginPath();
-        let prevScreen: { x: number; y: number } | null = null;
-        for (let idx = 0; idx < curRoute.points.length; idx++) {
-          const pt = curRoute.points[idx];
-          const p = toScreen(pt.lat, pt.lon);
-          if (!prevScreen || Math.abs(p.x - prevScreen.x) > width * 0.5) {
-            ctx.moveTo(p.x, p.y);
-          } else {
-            ctx.lineTo(p.x, p.y);
-          }
-          prevScreen = p;
-        }
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-        ctx.lineWidth = 7;
-        ctx.stroke();
-
-        for (let i = 1; i < curRoute.points.length; i++) {
-          const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
-          const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
-          if (Math.abs(p1.x - p0.x) > width * 0.5) continue;
-          ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.lineTo(p1.x, p1.y);
-          const hz = curRoute.points[i].hazardLevel;
-          ctx.strokeStyle =
-            hz === 'high' ? '#FB7185' : hz === 'moderate' ? '#FBBF24' : '#38BDF8';
-          ctx.lineWidth = 2.4;
-          ctx.stroke();
-        }
-
-        ctx.fillStyle = '#E0F2FE';
-        for (let i = 5; i < curRoute.points.length - 2; i += 7) {
-          const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
-          const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
-          if (Math.abs(p1.x - p0.x) > width * 0.5) continue;
-          const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+      // 4. Computed A* Navigation Route
+      if (curStart && curDest) {
+        if (curRoute.found && curRoute.points.length > 1) {
           ctx.save();
-          ctx.translate(p1.x, p1.y);
-          ctx.rotate(ang);
-          ctx.beginPath();
-          ctx.moveTo(5, 0);
-          ctx.lineTo(-3.5, -3);
-          ctx.lineTo(-3.5, 3);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
 
-        for (let wi = 0; wi < curRoute.waypoints.length; wi++) {
-          const wp = curRoute.waypoints[wi];
-          if (wp.tag === 'start' || wp.tag === 'target') continue;
-          const p = toScreen(wp.lat, wp.lon);
-          if (p.x < 10 || p.x > width - 10 || p.y < 10 || p.y > height - 10) {
-            continue;
-          }
-          ctx.save();
-          const wpColor =
-            wp.tag === 'avoid'
-              ? '#FBBF24'
-              : wp.tag === 'water'
-                ? '#38BDF8'
-                : '#E2E8F0';
-          ctx.fillStyle = '#070A10';
-          ctx.strokeStyle = wpColor;
-          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 7.5, 0, Math.PI * 2);
-          ctx.fill();
+          for (let idx = 0; idx < curRoute.points.length; idx++) {
+            const p = toScreen(curRoute.points[idx].lat, curRoute.points[idx].lon);
+            if (idx === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+          ctx.lineWidth = 7;
           ctx.stroke();
 
-          ctx.font = '700 9px "JetBrains Mono", monospace';
-          ctx.fillStyle = wpColor;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(String(wp.index - 1), p.x, p.y + 0.5);
+          for (let i = 1; i < curRoute.points.length; i++) {
+            const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
+            const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            const hz = curRoute.points[i].hazardLevel;
+            ctx.strokeStyle =
+              hz === 'high' ? '#FB7185' : hz === 'moderate' ? '#FBBF24' : '#38BDF8';
+            ctx.lineWidth = 2.4;
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#E0F2FE';
+          for (let i = 5; i < curRoute.points.length - 2; i += 7) {
+            const p0 = toScreen(curRoute.points[i - 1].lat, curRoute.points[i - 1].lon);
+            const p1 = toScreen(curRoute.points[i].lat, curRoute.points[i].lon);
+            const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+            ctx.save();
+            ctx.translate(p1.x, p1.y);
+            ctx.rotate(ang);
+            ctx.beginPath();
+            ctx.moveTo(5, 0);
+            ctx.lineTo(-3.5, -3);
+            ctx.lineTo(-3.5, 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+
+          for (let wi = 0; wi < curRoute.waypoints.length; wi++) {
+            const wp = curRoute.waypoints[wi];
+            if (wp.tag === 'start' || wp.tag === 'target') continue;
+            const p = toScreen(wp.lat, wp.lon);
+            if (p.x < 10 || p.x > width - 10 || p.y < 10 || p.y > height - 10) {
+              continue;
+            }
+            ctx.save();
+            const wpColor =
+              wp.tag === 'avoid'
+                ? '#FBBF24'
+                : wp.tag === 'water'
+                  ? '#38BDF8'
+                  : '#E2E8F0';
+            ctx.fillStyle = '#070A10';
+            ctx.strokeStyle = wpColor;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 7.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = '700 9px "JetBrains Mono", monospace';
+            ctx.fillStyle = wpColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(wp.index - 1), p.x, p.y + 0.5);
+            ctx.restore();
+          }
+
+          // If snapped to closest safe point near an impassable cliff, show subtle amber connector to original click
+          if (curRoute.snappedToSafeApproach && curRoute.originalDest) {
+            const endPt = curRoute.points[curRoute.points.length - 1];
+            const pSafe = toScreen(endPt.lat, endPt.lon);
+            const pOrig = toScreen(curRoute.originalDest.lat, curRoute.originalDest.lon);
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.7)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(pSafe.x, pSafe.y);
+            ctx.lineTo(pOrig.x, pOrig.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+            ctx.beginPath();
+            ctx.arc(pOrig.x, pOrig.y, 5, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
           ctx.restore();
-        }
-        ctx.restore();
-      } else if (!curRoute.found && curRoute.directDistanceKm > 0) {
-        const pStart = toScreen(curStart.lat, curStart.lon);
-        const pDest = toScreen(curDest.lat, curDest.lon);
-        if (Math.abs(pDest.x - pStart.x) <= width * 0.55) {
+        } else if (!curRoute.found && curRoute.directDistanceKm > 0) {
+          const pStart = toScreen(curStart.lat, curStart.lon);
+          const pDest = toScreen(curDest.lat, curDest.lon);
           ctx.save();
           ctx.setLineDash([6, 6]);
           ctx.strokeStyle = 'rgba(251, 113, 133, 0.55)';
@@ -620,7 +768,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         }
       }
 
-      // 5. Landmarks with tier-based zoom decluttering + cached label widths (zero shadowBlur!)
+      // 5. Landmarks with tier-based zoom decluttering + cached label widths
       const maxTier =
         curFilter !== 'all'
           ? curPpd < 5
@@ -693,7 +841,6 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         if (!overlaps || isSelected) {
           placedLabels.push(box);
           ctx.font = fontStr;
-          // Crisp 1px dark halo instead of expensive GPU shadowBlur
           ctx.fillStyle = 'rgba(3, 5, 8, 0.9)';
           ctx.fillText(lm.nameKo, lx + 1, ly + 1);
           ctx.fillStyle = isSelected
@@ -713,34 +860,44 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       }
       for (let i = 0; i < SORTED_LANDMARKS.length; i++) {
         const lm = SORTED_LANDMARKS[i];
-        if (lm.tier > maxTier) break; // sorted by tier, so we can exit early!
+        if (lm.tier > maxTier) break;
         if (curSelectedLm && lm.id === curSelectedLm.id) continue;
         if (curFilter !== 'all' && lm.type !== curFilter) continue;
         drawLandmark(lm, false);
       }
       ctx.restore();
 
-      // 6. Clean Target & Start Markers
+      // 6. Start & Target Pins (nullable until user picks them!)
       const drawPin = (
         lat: number,
         lon: number,
         label: string,
-        color: string
+        color: string,
+        activeHalo: boolean
       ) => {
         const p = toScreen(lat, lon);
         if (p.x < -30 || p.x > width + 30 || p.y < -30 || p.y > height + 30) {
           return;
         }
         ctx.save();
+        if (activeHalo) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.6;
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 3.4, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.font = '600 10px "JetBrains Mono", monospace';
@@ -752,13 +909,28 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         ctx.restore();
       };
 
-      drawPin(curStart.lat, curStart.lon, 'START', '#F8FAFC');
-      drawPin(
-        curDest.lat,
-        curDest.lon,
-        curRoute.found ? 'TARGET' : 'BLOCKED',
-        curRoute.found ? '#38BDF8' : '#FB7185'
-      );
+      if (curStart) {
+        drawPin(
+          curStart.lat,
+          curStart.lon,
+          'START',
+          '#F8FAFC',
+          propsRef.current.clickTool === 'start'
+        );
+      }
+      if (curDest) {
+        const targetCoord =
+          curRoute.found && curRoute.snappedToSafeApproach && curRoute.points.length > 0
+            ? curRoute.points[curRoute.points.length - 1]
+            : curDest;
+        drawPin(
+          targetCoord.lat,
+          targetCoord.lon,
+          curRoute.found || !curStart ? 'TARGET' : 'BLOCKED',
+          curRoute.found || !curStart ? '#38BDF8' : '#FB7185',
+          propsRef.current.clickTool === 'destination'
+        );
+      }
 
       if (curSelectedPt) {
         const p = toScreen(curSelectedPt.lat, curSelectedPt.lon);
@@ -796,13 +968,19 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           clearTimeout(syncTimerRef.current);
           syncTimerRef.current = null;
         }
-        viewRef.current = { lat: centerLat, lon: centerLon, ppd };
-        lastEmittedRef.current = { lat: centerLat, lon: centerLon, ppd };
+        const clamped = clampSingleMapViewport(
+          centerLat,
+          centerLon,
+          ppd,
+          canvasSize.width,
+          canvasSize.height
+        );
+        viewRef.current = clamped;
+        lastEmittedRef.current = clamped;
       }
       scheduleDraw();
-    }, [centerLat, centerLon, ppd, scheduleDraw]);
+    }, [centerLat, centerLon, ppd, canvasSize.width, canvasSize.height, scheduleDraw]);
 
-    // Trigger canvas redraw when non-viewport props change
     useEffect(() => {
       scheduleDraw();
     }, [
@@ -810,6 +988,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       startCoord,
       destCoord,
       route,
+      clickTool,
       arVisorMode,
       selectedPoint,
       selectedLandmark,
@@ -852,9 +1031,9 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const sy = clientY - rect.top;
       const v = viewRef.current;
 
-      const lon = normalizeLon(v.lon + (sx - canvasSize.width / 2) / v.ppd);
+      const lon = v.lon + (sx - canvasSize.width / 2) / v.ppd;
       const lat = v.lat - (sy - canvasSize.height / 2) / v.ppd;
-      if (lat < -85 || lat > 85) return null;
+      if (lon < -180 || lon > 180 || lat < -85 || lat > 85) return null;
       return { lat, lon };
     };
 
@@ -868,21 +1047,22 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
 
       const v = viewRef.current;
       const factor = e.deltaY < 0 ? 1.22 : 0.82;
-      const nextPpd = clamp(v.ppd * factor, 2.2, 140);
+      const minPpd = getMinPpd(canvasSize.width, canvasSize.height);
+      const nextPpd = clamp(v.ppd * factor, minPpd, 140);
 
       const mouseLon = v.lon + (sx - canvasSize.width / 2) / v.ppd;
       const mouseLat = v.lat - (sy - canvasSize.height / 2) / v.ppd;
 
-      const nextLon = normalizeLon(
-        mouseLon - (sx - canvasSize.width / 2) / nextPpd
-      );
-      const nextLat = clamp(
-        mouseLat + (sy - canvasSize.height / 2) / nextPpd,
-        -78,
-        78
-      );
+      const rawLon = mouseLon - (sx - canvasSize.width / 2) / nextPpd;
+      const rawLat = mouseLat + (sy - canvasSize.height / 2) / nextPpd;
 
-      viewRef.current = { lat: nextLat, lon: nextLon, ppd: nextPpd };
+      viewRef.current = clampSingleMapViewport(
+        rawLat,
+        rawLon,
+        nextPpd,
+        canvasSize.width,
+        canvasSize.height
+      );
       scheduleDraw();
       scheduleViewportSync(false);
     };
@@ -907,14 +1087,19 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           setCursorGrabbing(true);
         }
         const curPpd = viewRef.current.ppd;
-        const nextLon = normalizeLon(dragRef.current.startLon - dx / curPpd);
-        const nextLat = clamp(dragRef.current.startLat + dy / curPpd, -78, 78);
-        viewRef.current = { lat: nextLat, lon: nextLon, ppd: curPpd };
+        const rawLon = dragRef.current.startLon - dx / curPpd;
+        const rawLat = dragRef.current.startLat + dy / curPpd;
+        viewRef.current = clampSingleMapViewport(
+          rawLat,
+          rawLon,
+          curPpd,
+          canvasSize.width,
+          canvasSize.height
+        );
         scheduleDraw();
         return;
       }
 
-      // Throttle hover telemetry to ~13fps so moving the mouse never floods React state
       const now = performance.now();
       if (now - lastHoverEmitRef.current < 75) return;
       lastHoverEmitRef.current = now;
@@ -933,10 +1118,40 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         return;
       }
 
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const v = viewRef.current;
+
+      // Direct click on existing START or TARGET pin enters relocate mode for that pin
+      if (clickTool === null && onPinClick) {
+        if (startCoord) {
+          const px = canvasSize.width / 2 + (startCoord.lon - v.lon) * v.ppd;
+          const py = canvasSize.height / 2 + (v.lat - startCoord.lat) * v.ppd;
+          if (Math.hypot(sx - px, sy - py) < 18) {
+            onPinClick('start');
+            return;
+          }
+        }
+        if (destCoord) {
+          const effectiveDest =
+            route.found && route.snappedToSafeApproach && route.points.length > 0
+              ? route.points[route.points.length - 1]
+              : destCoord;
+          const px = canvasSize.width / 2 + (effectiveDest.lon - v.lon) * v.ppd;
+          const py = canvasSize.height / 2 + (v.lat - effectiveDest.lat) * v.ppd;
+          if (Math.hypot(sx - px, sy - py) < 18) {
+            onPinClick('destination');
+            return;
+          }
+        }
+      }
+
       const coord = screenToLatLon(e.clientX, e.clientY);
       if (!coord) return;
 
-      const v = viewRef.current;
       const maxHitTier =
         landmarkTypeFilter !== 'all'
           ? v.ppd < 5
@@ -948,10 +1163,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
               ? 2
               : 3;
 
-      let cDLon = coord.lon - v.lon;
-      while (cDLon > 180) cDLon -= 360;
-      while (cDLon < -180) cDLon += 360;
-      const cx = canvasSize.width / 2 + cDLon * v.ppd;
+      const cx = canvasSize.width / 2 + (coord.lon - v.lon) * v.ppd;
       const cy = canvasSize.height / 2 + (v.lat - coord.lat) * v.ppd;
 
       let closestLm: Landmark | null = null;
@@ -960,10 +1172,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         const lm = SORTED_LANDMARKS[i];
         if (lm.tier > maxHitTier && lm.id !== selectedLandmark?.id) continue;
         if (landmarkTypeFilter !== 'all' && lm.type !== landmarkTypeFilter) continue;
-        let dLon = lm.lon - v.lon;
-        while (dLon > 180) dLon -= 360;
-        while (dLon < -180) dLon += 360;
-        const lx = canvasSize.width / 2 + dLon * v.ppd;
+        const lx = canvasSize.width / 2 + (lm.lon - v.lon) * v.ppd;
         const ly = canvasSize.height / 2 + (v.lat - lm.lat) * v.ppd;
         const dist = Math.hypot(lx - cx, ly - cy);
         if (dist < 18) {
@@ -983,12 +1192,15 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       }
     };
 
-    const bearing = computeBearingDeg(
-      startCoord.lat,
-      startCoord.lon,
-      destCoord.lat,
-      destCoord.lon
-    );
+    const bearing =
+      startCoord && destCoord
+        ? computeBearingDeg(
+            startCoord.lat,
+            startCoord.lon,
+            destCoord.lat,
+            destCoord.lon
+          )
+        : 0;
 
     return (
       <div
@@ -1025,7 +1237,9 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
 
             <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-[#05070B]/90 border border-cyan-400/35 px-4 py-1.5 rounded flex items-center gap-4 text-xs font-mono text-cyan-300">
               <Compass className="w-3.5 h-3.5 text-cyan-400" />
-              <span>HDG {String(bearing).padStart(3, '0')}°</span>
+              <span>
+                HDG {startCoord && destCoord ? `${String(bearing).padStart(3, '0')}°` : '---'}
+              </span>
               <span className="text-white/20">|</span>
               <span>
                 DIST {route.found ? `${route.totalDistanceKm} km` : '--'}

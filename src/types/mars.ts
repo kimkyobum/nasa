@@ -4,7 +4,7 @@ export type MarsBaseLayerId = 'viking' | 'mola' | 'hybrid';
 
 export type NavigationMode = 'safe' | 'fast' | 'water';
 
-export type ClickTool = 'destination' | 'start' | 'inspect';
+export type ClickTool = 'destination' | 'start' | null;
 
 export type FarmingStrategy =
   | 'direct_soil'
@@ -13,9 +13,9 @@ export type FarmingStrategy =
 
 export interface SensorLayers {
   swimWater: boolean;
-  slopeHazard: boolean;
-  gammaRay: boolean;
+  elevation: boolean;
   soilFertility: boolean;
+  slopeHazard: boolean;
   geothermal: boolean;
 }
 
@@ -72,8 +72,6 @@ export interface RegionViewPreset {
   centerLat: number;
   centerLon: number;
   ppd: number; // pixels per degree at default view
-  defaultStart: { lat: number; lon: number };
-  defaultDest: { lat: number; lon: number };
 }
 
 export interface RoutePoint {
@@ -106,6 +104,8 @@ export interface RouteResult {
   found: boolean;
   mode: NavigationMode;
   terrainSource: 'nasa_tiles' | 'model';
+  snappedToSafeApproach?: boolean;
+  originalDest?: { lat: number; lon: number };
   points: RoutePoint[];
   waypoints: RouteWaypoint[];
   totalDistanceKm: number;

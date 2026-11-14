@@ -18,10 +18,8 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameEn: 'Global Mars',
     subtitleKo: 'NASA Mars Trek 전구 위성 지도 (타르시스 · 엘리시움 · 유토피아 평원 통합 뷰)',
     centerLat: 5,
-    centerLon: -15,
-    ppd: 3.2,
-    defaultStart: { lat: -3.2, lon: -128.4 },
-    defaultDest: { lat: 6.4, lon: -119.2 },
+    centerLon: 0,
+    ppd: 3.6,
   },
   tharsis: {
     id: 'tharsis',
@@ -31,8 +29,6 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     centerLat: 5.5,
     centerLon: -117.0,
     ppd: 14,
-    defaultStart: { lat: -3.2, lon: -128.4 },
-    defaultDest: { lat: 6.4, lon: -119.2 },
   },
   elysium: {
     id: 'elysium',
@@ -42,8 +38,6 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     centerLat: 26.0,
     centerLon: 149.0,
     ppd: 14,
-    defaultStart: { lat: 14.5, lon: 158.0 },
-    defaultDest: { lat: 34.2, lon: 143.5 },
   },
 };
 
@@ -413,7 +407,7 @@ export interface GlobalTelemetryAtlas {
   latMax: number;
   water: Uint8Array;
   soil: Uint8Array;
-  gamma: Uint8Array;
+  elevM: Int16Array;
   geo: Uint8Array;
   slopeX10: Uint16Array;
 }
@@ -431,7 +425,7 @@ export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
 
   const water = new Uint8Array(total);
   const soil = new Uint8Array(total);
-  const gamma = new Uint8Array(total);
+  const elevM = new Int16Array(total);
   const geo = new Uint8Array(total);
   const slopeX10 = new Uint16Array(total);
 
@@ -444,13 +438,13 @@ export function getGlobalTelemetryAtlas(): GlobalTelemetryAtlas {
       const idx = rowOffset + x;
       water[idx] = pt.combinedWaterProb;
       soil[idx] = pt.soilFertility;
-      gamma[idx] = pt.gammaHydrogen;
+      elevM[idx] = clamp(pt.elevationM, -10000, 24000);
       geo[idx] = pt.geothermalIndex;
       slopeX10[idx] = Math.round(pt.slopeDeg * 10);
     }
   }
 
-  cachedAtlas = { width, height, latMin, latMax, water, soil, gamma, geo, slopeX10 };
+  cachedAtlas = { width, height, latMin, latMax, water, soil, elevM, geo, slopeX10 };
   return cachedAtlas;
 }
 

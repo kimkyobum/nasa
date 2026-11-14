@@ -26,7 +26,6 @@ import {
 import {
   ClickTool,
   Landmark,
-  LandmarkType,
   MarsBaseLayerId,
   MarsTelemetryPoint,
   NavigationMode,
@@ -38,15 +37,6 @@ import { findMarsRouteFromNasaTiles } from './utils/pathfinding';
 
 type ActiveTab = 'map' | 'datasets' | 'agri';
 type ActiveDrawer = 'none' | 'search' | 'nav' | 'layers' | 'inspect';
-
-const LANDMARK_TYPE_TABS: { id: LandmarkType | 'all'; label: string }[] = [
-  { id: 'all', label: '전체' },
-  { id: 'volcano', label: '화산' },
-  { id: 'ice_sheet', label: '지하얼음' },
-  { id: 'agri_candidate', label: '농경지' },
-  { id: 'canyon', label: '협곡' },
-  { id: 'basecamp', label: '전초기지' },
-];
 
 const EMPTY_ROUTE: RouteResult = {
   found: false,
@@ -62,78 +52,61 @@ const EMPTY_ROUTE: RouteResult = {
   avgWaterProb: 0,
   hazardSegmentsCount: 0,
   safetyScore: 0,
-  summaryKo: '경로를 분석하는 중입니다...',
+  summaryKo: '출발지와 목적지를 선택하면 경로가 표시됩니다.',
 };
+
+function formatCoord(lat: number, lon: number): string {
+  const latStr = lat >= 0 ? `${lat.toFixed(2)}°N` : `${Math.abs(lat).toFixed(2)}°S`;
+  return `${latStr}, ${lon.toFixed(2)}°E`;
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('map');
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>('none');
   const [chartOpen, setChartOpen] = useState<boolean>(false);
 
-  const [regionId, setRegionId] = useState<RegionId>('tharsis');
+  const [regionId, setRegionId] = useState<RegionId>('global');
   const [baseLayer, setBaseLayer] = useState<MarsBaseLayerId>('hybrid');
   const [arVisorMode, setArVisorMode] = useState<boolean>(false);
 
-  const [viewLat, setViewLat] = useState<number>(
-    REGION_PRESETS.tharsis.centerLat
-  );
-  const [viewLon, setViewLon] = useState<number>(
-    REGION_PRESETS.tharsis.centerLon
-  );
-  const [viewPpd, setViewPpd] = useState<number>(REGION_PRESETS.tharsis.ppd);
+  const [viewLat, setViewLat] = useState<number>(REGION_PRESETS.global.centerLat);
+  const [viewLon, setViewLon] = useState<number>(REGION_PRESETS.global.centerLon);
+  const [viewPpd, setViewPpd] = useState<number>(REGION_PRESETS.global.ppd);
 
-  const [clickTool, setClickTool] = useState<ClickTool>('destination');
+  // Start with no preset route — guide user to choose Start first, then Destination
+  const [startCoord, setStartCoord] = useState<{ lat: number; lon: number } | null>(null);
+  const [destCoord, setDestCoord] = useState<{ lat: number; lon: number } | null>(null);
+  const [clickTool, setClickTool] = useState<ClickTool>('start');
   const [navMode, setNavMode] = useState<NavigationMode>('safe');
 
   const [layers, setLayers] = useState<SensorLayers>({
     swimWater: true,
-    slopeHazard: false,
-    gammaRay: false,
+    elevation: false,
     soilFertility: false,
+    slopeHazard: false,
     geothermal: false,
   });
+  const [layerOpacity, setLayerOpacity] = useState<number>(0.78);
 
-  const [minWaterThreshold, setMinWaterThreshold] = useState<number>(54);
-  const [maxSlopeThreshold, setMaxSlopeThreshold] = useState<number>(13);
-
-  const [startCoord, setStartCoord] = useState<{ lat: number; lon: number }>(
-    REGION_PRESETS.tharsis.defaultStart
-  );
-  const [destCoord, setDestCoord] = useState<{ lat: number; lon: number }>(
-    REGION_PRESETS.tharsis.defaultDest
-  );
-
-  const [destLatInput, setDestLatInput] = useState<string>(
-    String(REGION_PRESETS.tharsis.defaultDest.lat)
-  );
-  const [destLonInput, setDestLonInput] = useState<string>(
-    String(REGION_PRESETS.tharsis.defaultDest.lon)
-  );
-
-  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(
-    MARS_LANDMARKS.find((l) => l.id === 'tharsis_agri') ?? null
-  );
+  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [landmarkTypeFilter, setLandmarkTypeFilter] = useState<
-    LandmarkType | 'all'
-  >('all');
-  const [regionScopeOnly, setRegionScopeOnly] = useState<boolean>(false);
 
   const [inspectedPoint, setInspectedPoint] = useState<MarsTelemetryPoint>(() =>
-    sampleMarsTelemetry(
-      REGION_PRESETS.tharsis.defaultDest.lat,
-      REGION_PRESETS.tharsis.defaultDest.lon
-    )
+    sampleMarsTelemetry(5, 0)
   );
-  const [hoveredPoint, setHoveredPoint] = useState<MarsTelemetryPoint | null>(
-    null
-  );
+  const [hoveredPoint, setHoveredPoint] = useState<MarsTelemetryPoint | null>(null);
 
   const [route, setRoute] = useState<RouteResult>(EMPTY_ROUTE);
   const [isRouting, setIsRouting] = useState<boolean>(false);
 
-  // Run NASA Mars Trek tile-aware A* pathfinding whenever Start/Dest/Mode changes
+  // Run NASA Mars Trek tile-aware A* pathfinding whenever BOTH Start and Dest are set
   useEffect(() => {
+    if (!startCoord || !destCoord) {
+      setRoute(EMPTY_ROUTE);
+      setIsRouting(false);
+      return;
+    }
+
     let cancelled = false;
     setIsRouting(true);
     findMarsRouteFromNasaTiles(startCoord, destCoord, navMode).then((res) => {
@@ -153,19 +126,6 @@ export default function App() {
     setViewLat(preset.centerLat);
     setViewLon(preset.centerLon);
     setViewPpd(preset.ppd);
-
-    setStartCoord(preset.defaultStart);
-    setDestCoord(preset.defaultDest);
-    setDestLatInput(String(preset.defaultDest.lat));
-    setDestLonInput(String(preset.defaultDest.lon));
-    setInspectedPoint(
-      sampleMarsTelemetry(preset.defaultDest.lat, preset.defaultDest.lon)
-    );
-    setSelectedLandmark(
-      MARS_LANDMARKS.find((l) =>
-        nextId === 'elysium' ? l.id === 'elysium_agri' : l.id === 'tharsis_agri'
-      ) ?? null
-    );
   };
 
   const handleResetView = () => {
@@ -187,40 +147,27 @@ export default function App() {
   const handleMapClick = useCallback(
     (pt: MarsTelemetryPoint) => {
       setInspectedPoint(pt);
-      const near = findNearestLandmark(pt.lat, pt.lon, 0.35);
-      if (clickTool === 'destination') {
-        setDestCoord({ lat: pt.lat, lon: pt.lon });
-        setDestLatInput(String(pt.lat));
-        setDestLonInput(String(pt.lon));
-        setSelectedLandmark(near ? near.landmark : null);
-      } else if (clickTool === 'start') {
+      const near = findNearestLandmark(pt.lat, pt.lon, 0.45);
+
+      if (clickTool === 'start') {
         setStartCoord({ lat: pt.lat, lon: pt.lon });
+        setSelectedLandmark(near ? near.landmark : null);
+        setClickTool(destCoord === null ? 'destination' : null);
+      } else if (clickTool === 'destination') {
+        setDestCoord({ lat: pt.lat, lon: pt.lon });
+        setSelectedLandmark(near ? near.landmark : null);
+        setClickTool(null);
       } else {
-        if (near) setSelectedLandmark(near.landmark);
+        setSelectedLandmark(near ? near.landmark : null);
         setActiveDrawer('inspect');
       }
     },
-    [clickTool]
+    [clickTool, destCoord]
   );
 
-  const applyManualDest = () => {
-    const lat = parseFloat(destLatInput);
-    const lon = parseFloat(destLonInput);
-    if (Number.isNaN(lat) || Number.isNaN(lon)) return;
-    const cLat = Math.max(-85, Math.min(85, lat));
-    const cLon = Math.max(-180, Math.min(180, lon));
-    setDestCoord({
-      lat: Number(cLat.toFixed(2)),
-      lon: Number(cLon.toFixed(2)),
-    });
-    setDestLatInput(String(Number(cLat.toFixed(2))));
-    setDestLonInput(String(Number(cLon.toFixed(2))));
-    setInspectedPoint(sampleMarsTelemetry(cLat, cLon));
-    const near = findNearestLandmark(cLat, cLon, 0.4);
-    setSelectedLandmark(near ? near.landmark : null);
-    setViewLat(cLat);
-    setViewLon(cLon);
-  };
+  const handlePinClick = useCallback((pin: 'start' | 'destination') => {
+    setClickTool(pin);
+  }, []);
 
   const jumpToBestAgriSite = () => {
     const candidates = MARS_LANDMARKS.filter(
@@ -241,10 +188,13 @@ export default function App() {
       }
     }
     setDestCoord({ lat: best.lat, lon: best.lon });
-    setDestLatInput(String(best.lat));
-    setDestLonInput(String(best.lon));
     setInspectedPoint(best);
     setSelectedLandmark(bestLm);
+    if (!startCoord) {
+      setClickTool('start');
+    } else {
+      setClickTool(null);
+    }
     setViewLat(best.lat);
     setViewLon(best.lon);
     if (viewPpd < 12) setViewPpd(14);
@@ -252,17 +202,17 @@ export default function App() {
 
   const flyToLandmark = (
     lm: Landmark,
-    action: 'inspect' | 'dest' | 'start' = 'dest'
+    action: 'inspect' | 'dest' | 'start' = 'inspect'
   ) => {
     setSelectedLandmark(lm);
     const pt = sampleMarsTelemetry(lm.lat, lm.lon);
     setInspectedPoint(pt);
-    if (action === 'dest') {
-      setDestCoord({ lat: lm.lat, lon: lm.lon });
-      setDestLatInput(String(lm.lat));
-      setDestLonInput(String(lm.lon));
-    } else if (action === 'start') {
+    if (action === 'start') {
       setStartCoord({ lat: lm.lat, lon: lm.lon });
+      setClickTool(destCoord === null ? 'destination' : null);
+    } else if (action === 'dest') {
+      setDestCoord({ lat: lm.lat, lon: lm.lon });
+      setClickTool(startCoord === null ? 'start' : null);
     }
     setViewLat(lm.lat);
     setViewLon(lm.lon);
@@ -287,21 +237,14 @@ export default function App() {
   const filteredLandmarks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return MARS_LANDMARKS.filter((lm) => {
-      if (landmarkTypeFilter !== 'all' && lm.type !== landmarkTypeFilter) {
-        return false;
-      }
-      if (regionScopeOnly && regionId !== 'global' && lm.region !== regionId) {
-        return false;
-      }
       if (!q) return true;
       return (
         lm.nameKo.toLowerCase().includes(q) ||
         lm.nameEn.toLowerCase().includes(q) ||
-        lm.rawCategory.toLowerCase().includes(q) ||
-        lm.descriptionKo.toLowerCase().includes(q)
+        lm.rawCategory.toLowerCase().includes(q)
       );
     }).sort((a, b) => a.tier - b.tier);
-  }, [searchQuery, landmarkTypeFilter, regionScopeOnly, regionId]);
+  }, [searchQuery]);
 
   const quickRegionLandmarks = useMemo(
     () =>
@@ -309,9 +252,27 @@ export default function App() {
         (l) =>
           l.tier <= 2 &&
           (regionId === 'global' ? l.tier === 1 : l.region === regionId)
-      ).slice(0, 18),
+      ).slice(0, 14),
     [regionId]
   );
+
+  const startLabel = useMemo(() => {
+    if (!startCoord) return null;
+    const near = findNearestLandmark(startCoord.lat, startCoord.lon, 0.8);
+    return {
+      title: near ? near.landmark.nameKo : '사용자 지정 출발지',
+      coord: formatCoord(startCoord.lat, startCoord.lon),
+    };
+  }, [startCoord]);
+
+  const destLabel = useMemo(() => {
+    if (!destCoord) return null;
+    const near = findNearestLandmark(destCoord.lat, destCoord.lon, 0.8);
+    return {
+      title: near ? near.landmark.nameKo : '사용자 지정 목적지',
+      coord: formatCoord(destCoord.lat, destCoord.lon),
+    };
+  }, [destCoord]);
 
   const liveProbe = hoveredPoint ?? inspectedPoint;
 
@@ -416,7 +377,7 @@ export default function App() {
           </button>
         </nav>
 
-        {/* Zone 3: Primary Action (Search + AR Visor HUD) */}
+        {/* Zone 3: Search + AR Visor HUD */}
         <div className="pointer-events-auto flex items-center gap-2 shrink-0">
           <button
             type="button"
@@ -432,9 +393,7 @@ export default function App() {
             }`}
           >
             <Search className="w-3.5 h-3.5" strokeWidth={1.6} />
-            <span className="hidden sm:inline font-mono text-[11px]">
-              {MARS_LANDMARKS.length} 지역
-            </span>
+            <span className="hidden sm:inline text-[11px]">지역 검색</span>
           </button>
 
           <button
@@ -476,8 +435,7 @@ export default function App() {
             ppd={viewPpd}
             onViewportChange={handleViewportChange}
             layers={layers}
-            minWaterThreshold={minWaterThreshold}
-            maxSlopeThreshold={maxSlopeThreshold}
+            layerOpacity={layerOpacity}
             startCoord={startCoord}
             destCoord={destCoord}
             route={route}
@@ -485,14 +443,37 @@ export default function App() {
             arVisorMode={arVisorMode}
             selectedPoint={inspectedPoint}
             selectedLandmark={selectedLandmark}
-            landmarkTypeFilter={landmarkTypeFilter}
+            landmarkTypeFilter="all"
             onHoverPoint={setHoveredPoint}
             onMapClick={handleMapClick}
+            onPinClick={handlePinClick}
             onSelectLandmark={setSelectedLandmark}
           />
 
-          {/* Unreachable Route Banner (shown automatically when route cannot be safely traversed) */}
-          {!isRouting && !route.found && (
+          {/* Interactive Start / Destination Pick Prompt OR Unreachable / Snapped Banner */}
+          {clickTool !== null ? (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 max-w-[90vw] flex items-center gap-3 bg-[#070C14]/92 border border-sky-400/45 text-slate-100 px-4 py-2 rounded text-xs shadow-xl">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  clickTool === 'start' ? 'bg-white' : 'bg-sky-400'
+                }`}
+              />
+              <span>
+                {clickTool === 'start'
+                  ? '지도를 클릭해 출발지(START)를 설정하세요'
+                  : '지도를 클릭해 목적지(TARGET)를 설정하세요'}
+              </span>
+              {(startCoord !== null || destCoord !== null) && (
+                <button
+                  type="button"
+                  onClick={() => setClickTool(null)}
+                  className="text-slate-400 hover:text-white pl-1 border-l border-white/15"
+                >
+                  취소
+                </button>
+              )}
+            </div>
+          ) : startCoord && destCoord && !isRouting && !route.found ? (
             <button
               type="button"
               onClick={() => setActiveDrawer('nav')}
@@ -504,9 +485,18 @@ export default function App() {
               </span>
               <span className="text-slate-200 truncate">{route.summaryKo}</span>
             </button>
-          )}
+          ) : startCoord &&
+            destCoord &&
+            !isRouting &&
+            route.found &&
+            route.snappedToSafeApproach ? (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 max-w-[90vw] flex items-center gap-2 bg-[#141006]/92 border border-amber-400/40 text-amber-200 px-3.5 py-1.5 rounded text-xs shadow-xl">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="truncate">{route.summaryKo}</span>
+            </div>
+          ) : null}
 
-          {/* Bottom-Left Region Quick-Switch */}
+          {/* Bottom-Left Region Quick-Switch (Camera only — keeps chosen pins) */}
           <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1 bg-[#06090F]/90 border border-white/10 rounded p-1">
             {(['global', 'tharsis', 'elysium'] as RegionId[]).map((id) => (
               <button
@@ -531,10 +521,7 @@ export default function App() {
           {/* Bottom-Center Sleek Telemetry & Route Strip */}
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 hidden md:flex items-center gap-4 bg-[#06090F]/90 border border-white/10 px-5 py-2 rounded text-xs">
             <span className="font-mono text-white whitespace-nowrap">
-              {liveProbe.lat >= 0
-                ? `${liveProbe.lat.toFixed(2)}°N`
-                : `${Math.abs(liveProbe.lat).toFixed(2)}°S`}{' '}
-              {liveProbe.lon.toFixed(2)}°E
+              {formatCoord(liveProbe.lat, liveProbe.lon)}
             </span>
             <span className="text-white/20">|</span>
             <span className="font-mono text-slate-300 whitespace-nowrap">
@@ -547,20 +534,28 @@ export default function App() {
             <span className="text-white/20">|</span>
             <button
               type="button"
-              onClick={() => toggleDrawer('inspect')}
+              onClick={() =>
+                toggleDrawer(startCoord && destCoord ? 'inspect' : 'nav')
+              }
               className={`font-mono whitespace-nowrap ${
-                isRouting
-                  ? 'text-slate-300'
-                  : route.found
-                    ? 'text-emerald-300 hover:text-emerald-200'
-                    : 'text-rose-400 hover:text-rose-300 font-semibold'
+                !startCoord || !destCoord
+                  ? 'text-slate-300 hover:text-white'
+                  : isRouting
+                    ? 'text-slate-300'
+                    : route.found
+                      ? 'text-emerald-300 hover:text-emerald-200'
+                      : 'text-rose-400 hover:text-rose-300 font-semibold'
               }`}
             >
-              {isRouting
-                ? '실사 지형 경로 분석 중...'
-                : route.found
-                  ? `상세 경로 ${route.totalDistanceKm}km (${route.waypoints.length}개 경유점)`
-                  : '이동 불가 경로 (갈 수 없음)'}
+              {!startCoord
+                ? '출발지(START) 먼저 선택'
+                : !destCoord
+                  ? '목적지(TARGET) 선택 대기'
+                  : isRouting
+                    ? '실사 지형 경로 분석 중...'
+                    : route.found
+                      ? `경로 ${route.totalDistanceKm}km (${route.waypoints.length}개 경유점)`
+                      : '이동 불가 경로'}
             </button>
           </div>
 
@@ -569,7 +564,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => toggleDrawer('search')}
-              title="화성 지형·탐사지 검색 (680곳)"
+              title={`화성 지형 검색 (${MARS_LANDMARKS.length}곳)`}
               aria-label="화성 지형 검색"
               className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
                 activeDrawer === 'search'
@@ -653,7 +648,7 @@ export default function App() {
             <button
               type="button"
               onClick={() =>
-                setViewPpd((p) => Math.max(2.2, Number((p * 0.68).toFixed(2))))
+                setViewPpd((p) => Math.max(2.3, Number((p * 0.68).toFixed(2))))
               }
               title="축소"
               aria-label="지도 축소"
@@ -675,11 +670,11 @@ export default function App() {
 
           {/* On-Demand Slide-In Drawer */}
           {activeDrawer !== 'none' && (
-            <aside className="absolute top-16 right-16 bottom-16 w-[345px] z-20 bg-[#070A10]/94 border border-white/10 rounded-lg flex flex-col overflow-hidden shadow-2xl">
+            <aside className="absolute top-16 right-16 bottom-16 w-[350px] z-20 bg-[#070A10]/94 border border-white/10 rounded-lg flex flex-col overflow-hidden shadow-2xl">
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                 <span className="text-xs font-semibold tracking-wide text-white">
                   {activeDrawer === 'search'
-                    ? `화성 전체 지형 데이터베이스 (${MARS_LANDMARKS.length}곳)`
+                    ? '화성 지형 검색'
                     : activeDrawer === 'nav'
                       ? '경로 네비게이션 · 상세 길안내'
                       : activeDrawer === 'layers'
@@ -697,16 +692,17 @@ export default function App() {
               </div>
 
               <div className="p-4 space-y-5 overflow-y-auto flex-1 text-xs">
+                {/* 1. CLEAN SEARCH DRAWER */}
                 {activeDrawer === 'search' && (
                   <div className="space-y-3">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="지역명(한글/영문), 얼음, 농경, 화산 검색..."
-                        className="w-full bg-black/65 border border-white/15 rounded pl-8 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400/60"
+                        placeholder="지역명(한글/영문), 화산, 협곡 검색..."
+                        className="w-full bg-black/70 border border-white/15 rounded-md pl-9 pr-8 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-400/60"
                       />
                       {searchQuery && (
                         <button
@@ -720,49 +716,8 @@ export default function App() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1">
-                      {LANDMARK_TYPE_TABS.map((tab) => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setLandmarkTypeFilter(tab.id)}
-                          className={`py-1.5 px-2 rounded border text-[11px] transition-colors whitespace-nowrap ${
-                            landmarkTypeFilter === tab.id
-                              ? 'bg-sky-400/15 border-sky-400/45 text-sky-300 font-medium'
-                              : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                      <span>
-                        검색 결과{' '}
-                        <span className="font-mono text-white">
-                          {filteredLandmarks.length}
-                        </span>
-                        곳
-                        {filteredLandmarks.length > 80 ? ' (상위 80개 표시)' : ''}
-                      </span>
-                      {regionId !== 'global' && (
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={regionScopeOnly}
-                            onChange={(e) => setRegionScopeOnly(e.target.checked)}
-                            className="accent-sky-400 w-3 h-3"
-                          />
-                          <span>
-                            {regionId === 'tharsis' ? '타르시스만' : '엘리시움만'}
-                          </span>
-                        </label>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {filteredLandmarks.slice(0, 80).map((lm) => {
+                    <div className="space-y-2">
+                      {filteredLandmarks.slice(0, 60).map((lm) => {
                         const typeColor =
                           lm.type === 'volcano'
                             ? 'text-amber-300'
@@ -776,7 +731,7 @@ export default function App() {
                         return (
                           <div
                             key={lm.id}
-                            className={`p-2.5 rounded border transition-colors space-y-1.5 ${
+                            className={`p-3 rounded-md border transition-colors space-y-2.5 ${
                               selectedLandmark?.id === lm.id
                                 ? 'bg-sky-400/10 border-sky-400/40'
                                 : 'bg-black/45 border-white/10 hover:border-white/25'
@@ -788,11 +743,12 @@ export default function App() {
                                 onClick={() => flyToLandmark(lm, 'inspect')}
                                 className="text-left flex-1 group"
                               >
-                                <div className="font-medium text-white group-hover:text-sky-300 transition-colors">
+                                <div className="text-[13px] font-semibold text-white group-hover:text-sky-300 transition-colors">
                                   {lm.nameKo}
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-mono">
-                                  {lm.nameEn}
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  {lm.nameEn} · {formatCoord(lm.lat, lm.lon)} ·{' '}
+                                  {lm.elevationM.toLocaleString()}m
                                 </div>
                               </button>
                               <span
@@ -802,34 +758,21 @@ export default function App() {
                               </span>
                             </div>
 
-                            <p className="text-[11px] text-slate-400 leading-snug line-clamp-2">
-                              {lm.descriptionKo}
-                            </p>
-
-                            <div className="flex items-center justify-between pt-1">
-                              <span className="font-mono text-[10px] text-slate-400">
-                                {lm.lat >= 0
-                                  ? `${lm.lat.toFixed(1)}°N`
-                                  : `${Math.abs(lm.lat).toFixed(1)}°S`}{' '}
-                                {lm.lon.toFixed(1)}°E ·{' '}
-                                {lm.elevationM.toLocaleString()}m
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => flyToLandmark(lm, 'start')}
-                                  className="px-2 py-0.5 text-[10px] bg-white/10 hover:bg-white/20 text-slate-200 rounded"
-                                >
-                                  출발
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => flyToLandmark(lm, 'dest')}
-                                  className="px-2 py-0.5 text-[10px] bg-sky-400/20 hover:bg-sky-400/30 text-sky-300 rounded font-medium"
-                                >
-                                  목적지
-                                </button>
-                              </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => flyToLandmark(lm, 'start')}
+                                className="py-2 text-xs font-medium bg-white/10 hover:bg-white/20 text-slate-100 rounded transition-colors"
+                              >
+                                출발지로 설정
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => flyToLandmark(lm, 'dest')}
+                                className="py-2 text-xs font-semibold bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/35 text-sky-200 rounded transition-colors"
+                              >
+                                목적지로 설정
+                              </button>
                             </div>
                           </div>
                         );
@@ -838,72 +781,88 @@ export default function App() {
                   </div>
                 )}
 
+                {/* 2. SIMPLIFIED NAVIGATION DRAWER */}
                 {activeDrawer === 'nav' && (
                   <>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-slate-400">
-                        <span>지도 클릭 동작</span>
+                        <span>출발 · 목적지 설정 (클릭 후 지도 선택)</span>
                         <button
                           type="button"
                           onClick={jumpToBestAgriSite}
                           className="text-emerald-400 hover:text-emerald-300 font-medium"
                         >
-                          최적 농경지 자동 찾기
+                          최적 농경지 추천
                         </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-1 p-1 bg-black/50 border border-white/10 rounded">
-                        {(
-                          [
-                            { id: 'destination', label: '목적지 찍기' },
-                            { id: 'start', label: '출발지 변경' },
-                            { id: 'inspect', label: '지점 검사' },
-                          ] as { id: ClickTool; label: string }[]
-                        ).map((tool) => (
-                          <button
-                            key={tool.id}
-                            type="button"
-                            onClick={() => setClickTool(tool.id)}
-                            className={`py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                              clickTool === tool.id
-                                ? 'bg-sky-400/20 text-sky-300'
-                                : 'text-slate-400 hover:text-white'
-                            }`}
-                          >
-                            {tool.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
 
-                    <div className="space-y-2 pt-4 border-t border-white/10">
-                      <label className="text-slate-400 block">
-                        목적지 좌표 직접 입력 (°N / °E)
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={destLatInput}
-                          onChange={(e) => setDestLatInput(e.target.value)}
-                          aria-label="목적지 위도"
-                          className="w-full bg-black/60 border border-white/15 rounded px-2.5 py-1.5 font-mono text-white"
-                        />
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={destLonInput}
-                          onChange={(e) => setDestLonInput(e.target.value)}
-                          aria-label="목적지 경도"
-                          className="w-full bg-black/60 border border-white/15 rounded px-2.5 py-1.5 font-mono text-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={applyManualDest}
-                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded whitespace-nowrap shrink-0"
-                        >
-                          적용
-                        </button>
-                      </div>
+                      {/* Clickable START Card */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setClickTool((prev) =>
+                            prev === 'start' ? null : 'start'
+                          )
+                        }
+                        className={`w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between gap-2 ${
+                          clickTool === 'start'
+                            ? 'bg-white/15 border-white/60'
+                            : 'bg-black/50 border-white/15 hover:border-white/35'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-white shrink-0" />
+                            <span className="font-mono text-[11px] font-semibold text-white">
+                              출발지 (START)
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-200 mt-1 truncate pl-4">
+                            {clickTool === 'start'
+                              ? '지도에서 새 출발지를 클릭하세요...'
+                              : startLabel
+                                ? `${startLabel.title} · ${startLabel.coord}`
+                                : '클릭 후 지도에서 출발지 선택'}
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-400 shrink-0">
+                          {clickTool === 'start' ? '선택 중' : '변경'}
+                        </span>
+                      </button>
+
+                      {/* Clickable TARGET Card */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setClickTool((prev) =>
+                            prev === 'destination' ? null : 'destination'
+                          )
+                        }
+                        className={`w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between gap-2 ${
+                          clickTool === 'destination'
+                            ? 'bg-sky-400/15 border-sky-400'
+                            : 'bg-black/50 border-white/15 hover:border-sky-400/40'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                            <span className="font-mono text-[11px] font-semibold text-sky-300">
+                              목적지 (TARGET)
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-200 mt-1 truncate pl-4">
+                            {clickTool === 'destination'
+                              ? '지도에서 새 목적지를 클릭하세요...'
+                              : destLabel
+                                ? `${destLabel.title} · ${destLabel.coord}`
+                                : '클릭 후 지도에서 목적지 선택'}
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-sky-300 shrink-0">
+                          {clickTool === 'destination' ? '선택 중' : '변경'}
+                        </span>
+                      </button>
                     </div>
 
                     <div className="space-y-2 pt-4 border-t border-white/10">
@@ -922,7 +881,7 @@ export default function App() {
                             key={m.id}
                             type="button"
                             onClick={() => setNavMode(m.id)}
-                            className={`py-1.5 rounded border text-[11px] transition-colors whitespace-nowrap ${
+                            className={`py-2 rounded border text-[11px] transition-colors whitespace-nowrap ${
                               navMode === m.id
                                 ? 'bg-sky-400/15 text-sky-300 border-sky-400/40 font-medium'
                                 : 'bg-black/40 text-slate-400 border-white/10 hover:text-white'
@@ -940,7 +899,7 @@ export default function App() {
                         <span className="text-slate-300 font-medium">
                           {route.found
                             ? `단계별 상세 길안내 (${route.waypoints.length}단계)`
-                            : '경로 탐색 결과'}
+                            : '상세 길안내'}
                         </span>
                         <span className="font-mono text-[10px] text-sky-300">
                           {route.terrainSource === 'nasa_tiles'
@@ -949,7 +908,12 @@ export default function App() {
                         </span>
                       </div>
 
-                      {!isRouting && !route.found ? (
+                      {!startCoord || !destCoord ? (
+                        <div className="bg-black/45 border border-white/10 rounded p-3 text-[11px] text-slate-400 leading-relaxed">
+                          위 출발지(START)와 목적지(TARGET)를 모두 설정하면 NASA
+                          실사 지형 기반 안전 경로와 상세 길안내가 표시됩니다.
+                        </div>
+                      ) : !isRouting && !route.found ? (
                         <div className="bg-rose-950/40 border border-rose-500/35 rounded p-3 space-y-1.5">
                           <div className="flex items-center gap-1.5 text-rose-300 font-semibold">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -962,43 +926,43 @@ export default function App() {
                       ) : (
                         <div className="space-y-1.5">
                           {route.waypoints.map((wp) => (
-                          <button
-                            key={wp.index}
-                            type="button"
-                            onClick={() => {
-                              setViewLat(wp.lat);
-                              setViewLon(wp.lon);
-                              if (viewPpd < 24) setViewPpd(26);
-                              setInspectedPoint(
-                                sampleMarsTelemetry(wp.lat, wp.lon)
-                              );
-                            }}
-                            className="w-full text-left bg-black/45 hover:bg-white/10 border border-white/10 rounded p-2.5 transition-colors space-y-1"
-                          >
-                            <div className="flex items-center justify-between font-mono text-[11px]">
-                              <span
-                                className={
-                                  wp.tag === 'avoid'
-                                    ? 'text-amber-300 font-semibold'
-                                    : wp.tag === 'water'
-                                      ? 'text-sky-300 font-semibold'
-                                      : wp.tag === 'target'
-                                        ? 'text-emerald-300 font-semibold'
-                                        : 'text-white font-semibold'
-                                }
-                              >
-                                {wp.code === 'START' || wp.code === 'TARGET'
-                                  ? wp.code
-                                  : `${wp.index - 1}. ${wp.code}`}
-                              </span>
-                              <span className="text-slate-400">
-                                {wp.distanceFromStartKm} km · {wp.bearingDeg}°
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-200 leading-snug">
-                              {wp.instructionKo}
-                            </div>
-                          </button>
+                            <button
+                              key={wp.index}
+                              type="button"
+                              onClick={() => {
+                                setViewLat(wp.lat);
+                                setViewLon(wp.lon);
+                                if (viewPpd < 24) setViewPpd(26);
+                                setInspectedPoint(
+                                  sampleMarsTelemetry(wp.lat, wp.lon)
+                                );
+                              }}
+                              className="w-full text-left bg-black/45 hover:bg-white/10 border border-white/10 rounded p-2.5 transition-colors space-y-1"
+                            >
+                              <div className="flex items-center justify-between font-mono text-[11px]">
+                                <span
+                                  className={
+                                    wp.tag === 'avoid'
+                                      ? 'text-amber-300 font-semibold'
+                                      : wp.tag === 'water'
+                                        ? 'text-sky-300 font-semibold'
+                                        : wp.tag === 'target'
+                                          ? 'text-emerald-300 font-semibold'
+                                          : 'text-white font-semibold'
+                                  }
+                                >
+                                  {wp.code === 'START' || wp.code === 'TARGET'
+                                    ? wp.code
+                                    : `${wp.index - 1}. ${wp.code}`}
+                                </span>
+                                <span className="text-slate-400">
+                                  {wp.distanceFromStartKm} km · {wp.bearingDeg}°
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-200 leading-snug">
+                                {wp.instructionKo}
+                              </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -1007,7 +971,7 @@ export default function App() {
                     <div className="space-y-2 pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400">
-                          주요 화산 · 탐사 거점
+                          주요 화산 · 탐사 지형
                         </span>
                         <button
                           type="button"
@@ -1040,6 +1004,7 @@ export default function App() {
                   </>
                 )}
 
+                {/* 3. REDESIGNED SENSOR LAYERS DRAWER */}
                 {activeDrawer === 'layers' && (
                   <>
                     <div className="space-y-2">
@@ -1058,7 +1023,7 @@ export default function App() {
                             key={b.id}
                             type="button"
                             onClick={() => setBaseLayer(b.id)}
-                            className={`py-1.5 rounded border text-[11px] transition-colors whitespace-nowrap ${
+                            className={`py-2 rounded border text-[11px] transition-colors whitespace-nowrap ${
                               baseLayer === b.id
                                 ? 'bg-amber-400/15 text-amber-300 border-amber-400/40 font-medium'
                                 : 'bg-black/40 text-slate-400 border-white/10 hover:text-white'
@@ -1070,106 +1035,112 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="space-y-2 pt-4 border-t border-white/10">
+                    <div className="space-y-2.5 pt-4 border-t border-white/10">
                       <span className="text-slate-400 block">
-                        과학 센서 데이터 오버레이
+                        과학 센서 데이터 레이어
                       </span>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {(
                           [
                             {
                               key: 'swimWater',
-                              label: 'SWIM 지하 얼음·수자원 확률',
-                              color: 'accent-sky-400',
+                              label: '지하수 · 얼음 확률 (기본)',
+                              desc: '진한 파랑일수록 지하수 매장 확률 높음',
+                              gradient: 'from-sky-300/25 via-sky-500 to-blue-700',
+                              accent: 'accent-sky-400',
+                            },
+                            {
+                              key: 'elevation',
+                              label: '지형 고도 (MOLA)',
+                              desc: '저지대(파랑) → 평지(초록) → 고지대(주황·빨강)',
+                              gradient:
+                                'from-blue-600 via-emerald-500 to-rose-500',
+                              accent: 'accent-cyan-400',
                             },
                             {
                               key: 'soilFertility',
-                              label: 'CRISM 농업 적합 토양',
-                              color: 'accent-emerald-400',
+                              label: '농업 적합 토양 (CRISM)',
+                              desc: '점토 광물 풍부·낮은 독성 비옥 지대',
+                              gradient: 'from-emerald-900/40 to-emerald-400',
+                              accent: 'accent-emerald-400',
                             },
                             {
                               key: 'slopeHazard',
-                              label: 'MOLA 급경사 위험 지형',
-                              color: 'accent-rose-400',
-                            },
-                            {
-                              key: 'gammaRay',
-                              label: 'GRS 감마선 표층 수소',
-                              color: 'accent-indigo-400',
+                              label: '위험 지형 (급경사·절벽)',
+                              desc: '로버 전복 위험이 높은 가파른 경사면',
+                              gradient: 'from-rose-900/40 to-rose-500',
+                              accent: 'accent-rose-400',
                             },
                             {
                               key: 'geothermal',
-                              label: '화산 지열·용융 구배',
-                              color: 'accent-amber-400',
+                              label: '화산 · 지열 지대',
+                              desc: '대형 화산 밀집 및 지열 구배 지역',
+                              gradient: 'from-amber-900/40 to-orange-500',
+                              accent: 'accent-amber-400',
                             },
                           ] as {
                             key: keyof SensorLayers;
                             label: string;
-                            color: string;
+                            desc: string;
+                            gradient: string;
+                            accent: string;
                           }[]
-                        ).map((item) => (
-                          <label
-                            key={item.key}
-                            className="flex items-center justify-between px-3 py-2 bg-black/40 border border-white/10 rounded cursor-pointer hover:border-white/20 text-slate-200"
-                          >
-                            <span>{item.label}</span>
-                            <input
-                              type="checkbox"
-                              checked={layers[item.key]}
-                              onChange={() => toggleLayer(item.key)}
-                              className={`${item.color} w-3.5 h-3.5 cursor-pointer`}
-                            />
-                          </label>
-                        ))}
+                        ).map((item) => {
+                          const active = layers[item.key];
+                          return (
+                            <label
+                              key={item.key}
+                              className={`block px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
+                                active
+                                  ? 'bg-white/[0.06] border-white/25 text-white'
+                                  : 'bg-black/40 border-white/10 text-slate-300 hover:border-white/20'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium text-xs">
+                                  {item.label}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={active}
+                                  onChange={() => toggleLayer(item.key)}
+                                  className={`${item.accent} w-3.5 h-3.5 cursor-pointer`}
+                                />
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                {item.desc}
+                              </div>
+                              <div
+                                className={`h-1.5 w-full rounded-full mt-2 bg-gradient-to-r ${item.gradient}`}
+                              />
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <div className="space-y-3 pt-4 border-t border-white/10">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-slate-400">
-                            최소 지하수 표시 임계값
-                          </span>
-                          <span className="font-mono text-sky-300">
-                            {minWaterThreshold}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={20}
-                          max={85}
-                          value={minWaterThreshold}
-                          onChange={(e) =>
-                            setMinWaterThreshold(Number(e.target.value))
-                          }
-                          className="w-full accent-sky-400 cursor-pointer"
-                        />
+                    <div className="space-y-2 pt-4 border-t border-white/10">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">레이어 색상 진하기</span>
+                        <span className="font-mono text-sky-300">
+                          {Math.round(layerOpacity * 100)}%
+                        </span>
                       </div>
-
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-slate-400">
-                            급경사 위험 경고 기준
-                          </span>
-                          <span className="font-mono text-rose-300">
-                            {maxSlopeThreshold}°
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={6}
-                          max={22}
-                          value={maxSlopeThreshold}
-                          onChange={(e) =>
-                            setMaxSlopeThreshold(Number(e.target.value))
-                          }
-                          className="w-full accent-rose-400 cursor-pointer"
-                        />
-                      </div>
+                      <input
+                        type="range"
+                        min={25}
+                        max={100}
+                        value={Math.round(layerOpacity * 100)}
+                        onChange={(e) =>
+                          setLayerOpacity(Number(e.target.value) / 100)
+                        }
+                        className="w-full accent-sky-400 cursor-pointer"
+                      />
                     </div>
                   </>
                 )}
 
+                {/* 4. INSPECT DRAWER */}
                 {activeDrawer === 'inspect' && (
                   <>
                     <div className="space-y-2">
@@ -1177,21 +1148,34 @@ export default function App() {
                         <span>네비게이션 요약</span>
                         <span
                           className={`font-mono ${
-                            route.found
-                              ? 'text-sky-300'
-                              : 'text-rose-400 font-semibold'
+                            !startCoord || !destCoord
+                              ? 'text-slate-400'
+                              : route.found
+                                ? 'text-sky-300'
+                                : 'text-rose-400 font-semibold'
                           }`}
                         >
-                          {route.found
-                            ? `안전도 ${route.safetyScore}/100`
-                            : '이동 불가'}
+                          {!startCoord || !destCoord
+                            ? '경로 미지정'
+                            : route.found
+                              ? `안전도 ${route.safetyScore}/100`
+                              : '이동 불가'}
                         </span>
                       </div>
-                      {!isRouting && !route.found && (
+                      {startCoord && destCoord && !isRouting && !route.found && (
                         <div className="bg-rose-950/40 border border-rose-500/35 rounded p-2.5 text-[11px] text-rose-200 leading-relaxed">
                           {route.summaryKo}
                         </div>
                       )}
+                      {startCoord &&
+                        destCoord &&
+                        !isRouting &&
+                        route.found &&
+                        route.snappedToSafeApproach && (
+                          <div className="bg-amber-950/35 border border-amber-400/35 rounded p-2.5 text-[11px] text-amber-200 leading-relaxed">
+                            {route.summaryKo}
+                          </div>
+                        )}
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-black/45 border border-white/10 rounded p-2.5">
                           <div className="text-[10px] text-slate-400">총 거리</div>
@@ -1267,10 +1251,7 @@ export default function App() {
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400">선택 좌표 데이터</span>
                         <span className="font-mono text-white">
-                          {inspectedPoint.lat >= 0
-                            ? `${inspectedPoint.lat.toFixed(2)}°N`
-                            : `${Math.abs(inspectedPoint.lat).toFixed(2)}°S`}
-                          , {inspectedPoint.lon.toFixed(2)}°E
+                          {formatCoord(inspectedPoint.lat, inspectedPoint.lon)}
                         </span>
                       </div>
 
@@ -1350,13 +1331,13 @@ export default function App() {
                         <p className="text-[11px] text-slate-400 leading-relaxed">
                           {selectedLandmark.waterNoteKo}
                         </p>
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        <div className="grid grid-cols-2 gap-2 pt-1">
                           <button
                             type="button"
                             onClick={() =>
                               flyToLandmark(selectedLandmark, 'start')
                             }
-                            className="py-1.5 text-[11px] bg-white/10 hover:bg-white/15 text-slate-200 rounded transition-colors"
+                            className="py-2 text-xs bg-white/10 hover:bg-white/20 text-slate-100 rounded transition-colors"
                           >
                             출발지로 설정
                           </button>
@@ -1365,7 +1346,7 @@ export default function App() {
                             onClick={() =>
                               flyToLandmark(selectedLandmark, 'dest')
                             }
-                            className="py-1.5 text-[11px] bg-sky-400/20 hover:bg-sky-400/30 text-sky-300 font-medium rounded transition-colors"
+                            className="py-2 text-xs bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/35 text-sky-200 font-semibold rounded transition-colors"
                           >
                             목적지로 설정
                           </button>

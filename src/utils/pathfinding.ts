@@ -60,10 +60,7 @@ function haversineApproxKm(
 ): number {
   const meanLatRad = (((lat1 + lat2) / 2) * Math.PI) / 180;
   const dLatKm = (lat2 - lat1) * KM_PER_DEG;
-  let dLon = lon2 - lon1;
-  if (dLon > 180) dLon -= 360;
-  if (dLon < -180) dLon += 360;
-  const dLonKm = dLon * KM_PER_DEG * Math.cos(meanLatRad);
+  const dLonKm = (lon2 - lon1) * KM_PER_DEG * Math.cos(meanLatRad);
   return Math.hypot(dLatKm, dLonKm);
 }
 
@@ -73,9 +70,7 @@ function bearingDeg(
   lat2: number,
   lon2: number
 ): number {
-  let dLon = lon2 - lon1;
-  if (dLon > 180) dLon -= 360;
-  if (dLon < -180) dLon += 360;
+  const dLon = lon2 - lon1;
   const dLat = lat2 - lat1;
   const rad = Math.atan2(dLon, dLat);
   return Math.round(((rad * 180) / Math.PI + 360) % 360);
@@ -128,12 +123,12 @@ async function buildRealTileTerrainGrid(
   const numRows = 1 << z;
   const tileDeg = 180 / numRows;
 
-  const colStart = Math.floor((lonMin + 180) / tileDeg);
-  const colEnd = Math.floor((lonMax + 180) / tileDeg);
+  const colStart = Math.max(0, Math.floor((lonMin + 180) / tileDeg));
+  const colEnd = Math.min(numCols - 1, Math.floor((lonMax + 180) / tileDeg));
   const rowStart = Math.max(0, Math.floor((90 - latMax) / tileDeg));
   const rowEnd = Math.min(numRows - 1, Math.floor((90 - latMin) / tileDeg));
 
-  // Sample at 4x higher pixel resolution first so thin fissures/crater walls are never missed by downsampling
+  // Sample at 4x higher pixel resolution first so thin fissures/crater walls are detected
   const HI_SCALE = 4;
   const hiW = COLS * HI_SCALE;
   const hiH = ROWS * HI_SCALE;
@@ -158,9 +153,8 @@ async function buildRealTileTerrainGrid(
       const dy = ((latMax - tileLatTop) / (latMax - latMin)) * hiH;
       const dh = ((tileLatTop - tileLatBot) / (latMax - latMin)) * hiH;
 
-      for (let rawC = colStart; rawC <= colEnd; rawC++) {
-        const c = ((rawC % numCols) + numCols) % numCols;
-        const tileLonLeft = -180 + rawC * tileDeg;
+      for (let c = colStart; c <= colEnd; c++) {
+        const tileLonLeft = -180 + c * tileDeg;
         const dx = ((tileLonLeft - lonMin) / (lonMax - lonMin)) * hiW;
         const dw = (tileDeg / (lonMax - lonMin)) * hiW;
 
@@ -283,18 +277,18 @@ async function buildRealTileTerrainGrid(
         );
         elevM = Math.round(molaElev * 0.6 + baseTel.elevationM * 0.4);
 
-        const pooledCliff = maxCliff * 0.68 + avgCliff * 0.32;
-        cliffHazard = Math.min(100, Math.round(pooledCliff * 1.15));
-        // Boost effective slope where real satellite imagery shows sharp scarps/fissures
+        const pooledCliff = maxCliff * 0.55 + avgCliff * 0.45;
+        cliffHazard = Math.min(100, Math.round(pooledCliff * 0.88));
+        // Boost effective slope only where real satellite imagery shows sheer scarps/canyon walls
         slopeDeg = Number(
           Math.min(
             42,
-            Math.max(baseTel.slopeDeg, pooledCliff * 0.24)
+            Math.max(baseTel.slopeDeg, pooledCliff * 0.19)
           ).toFixed(1)
         );
       }
 
-      const isFissureWall = cliffHazard >= 58 || slopeDeg >= 16.5;
+      const isFissureWall = cliffHazard >= 76 || slopeDeg >= 18.0;
 
       rowArr.push({
         ...baseTel,
@@ -304,7 +298,7 @@ async function buildRealTileTerrainGrid(
         roughnessHazard: Math.max(baseTel.roughnessHazard, cliffHazard),
         cliffHazard,
         isFissureWall,
-        isObstacle: baseTel.isObstacle || isFissureWall,
+        isObstacle: baseTel.slopeDeg >= 19.0 || isFissureWall,
       });
     }
     grid.push(rowArr);
@@ -327,12 +321,10 @@ function runWeightedAStar(
   const ROWS = grid.length;
   const COLS = grid[0].length;
 
-  const sLat = startCoord.lat;
+  const sLat = Math.max(-85, Math.min(85, startCoord.lat));
   const sLon = normalizeLon(startCoord.lon);
-  const dLat = destCoord.lat;
-  let dLon = normalizeLon(destCoord.lon);
-  if (dLon - sLon > 180) dLon -= 360;
-  if (dLon - sLon < -180) dLon += 360;
+  const dLat = Math.max(-85, Math.min(85, destCoord.lat));
+  const dLon = normalizeLon(destCoord.lon);
 
   const directDist = haversineApproxKm(sLat, sLon, dLat, dLon);
 
@@ -347,7 +339,7 @@ function runWeightedAStar(
     ),
   });
 
-  const start = toGrid(sLat, sLon);
+  let start = toGrid(sLat, sLon);
   const dest = toGrid(dLat, dLon);
 
   const unreachableResult = (reasonKo: string): RouteResult => ({
@@ -367,34 +359,56 @@ function runWeightedAStar(
     summaryKo: reasonKo,
   });
 
-  const startCell = grid[start.row][start.col];
-  const destCell = grid[dest.row][dest.col];
-
-  if (directDist > 6000) {
+  if (directDist > 8500) {
     return unreachableResult(
-      `단일 로버 탐사 한계 거리(6,000 km)를 초과해 이동이 불가능합니다. (직선 ${directDist.toFixed(0)} km)`
+      `단일 로버 탐사 한계 거리(8,500 km)를 초과해 이동이 불가능합니다. (직선 ${directDist.toFixed(0)} km)`
     );
   }
 
+  let startCell = grid[start.row][start.col];
+  // If user clicked directly on a sharp cliff line as Start, step to closest safe adjacent cell within ~2-3 cells
   if (
     startCell.isObstacle ||
-    startCell.slopeDeg >= 16.5 ||
-    (startCell.elevationM >= 14500 && mode !== 'fast')
+    startCell.slopeDeg >= 18.0 ||
+    (startCell.elevationM >= 16500 && mode !== 'fast')
   ) {
-    return unreachableResult(
-      `출발 지점이 급경사 절벽·고산 지형(경사 ${startCell.slopeDeg}° / 고도 ${startCell.elevationM.toLocaleString()}m)으로 출발할 수 없습니다.`
-    );
+    let bestR = -1;
+    let bestC = -1;
+    let bestDist = Infinity;
+    for (let dr = -4; dr <= 4; dr++) {
+      for (let dc = -4; dc <= 4; dc++) {
+        const nr = start.row + dr;
+        const nc = start.col + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+        const cand = grid[nr][nc];
+        if (
+          !cand.isObstacle &&
+          cand.slopeDeg < 18.0 &&
+          (cand.elevationM < 16500 || mode === 'fast')
+        ) {
+          const d = Math.hypot(dr, dc);
+          if (d < bestDist) {
+            bestDist = d;
+            bestR = nr;
+            bestC = nc;
+          }
+        }
+      }
+    }
+    if (bestR === -1) {
+      return unreachableResult(
+        `출발 지점이 급경사 절벽·고산 지형(경사 ${startCell.slopeDeg}° / 고도 ${startCell.elevationM.toLocaleString()}m)으로 출발할 수 없습니다.`
+      );
+    }
+    start = { row: bestR, col: bestC };
+    startCell = grid[bestR][bestC];
   }
 
-  if (
+  const destCell = grid[dest.row][dest.col];
+  const destIsBlocked =
     destCell.isObstacle ||
-    destCell.slopeDeg >= 16.5 ||
-    (destCell.elevationM >= 14500 && mode !== 'fast')
-  ) {
-    return unreachableResult(
-      `목적지가 급경사 절벽·분화구 벽면(경사 ${destCell.slopeDeg}° / 고도 ${destCell.elevationM.toLocaleString()}m)에 있어 진입이 불가능합니다.`
-    );
-  }
+    destCell.slopeDeg >= 18.0 ||
+    (destCell.elevationM >= 16500 && mode !== 'fast');
 
   const total = ROWS * COLS;
   const gScore = new Float64Array(total).fill(Infinity);
@@ -473,7 +487,7 @@ function runWeightedAStar(
     [1, 1],
   ];
 
-  // Strictly block impassable cliffs, crater walls, and steep fissures (never force a fake line through walls)
+  // Search reachable safe terrain; when exact destination is blocked, explores reachable basin toward target
   const runSearch = (): boolean => {
     gScore.fill(Infinity);
     cameFrom.fill(-1);
@@ -489,9 +503,11 @@ function runWeightedAStar(
 
     while (open.length > 0) {
       const current = open.pop();
-
       const cIdx = idx(current.r, current.c);
-      if (cIdx === destIdx) return true;
+      if (cIdx === destIdx && !destIsBlocked) {
+        closed[cIdx] = 1;
+        return true;
+      }
       if (closed[cIdx]) continue;
       closed[cIdx] = 1;
 
@@ -506,7 +522,11 @@ function runWeightedAStar(
         if (closed[nIdx]) continue;
 
         const nextCell = grid[nr][nc];
-        if (nextCell.isObstacle && (mode !== 'fast' || nextCell.slopeDeg >= 20)) {
+        const nextBlocked =
+          nextCell.isObstacle ||
+          nextCell.slopeDeg >= 18.0 ||
+          (nextCell.elevationM >= 16500 && mode !== 'fast');
+        if (nextBlocked && (mode !== 'fast' || nextCell.slopeDeg >= 22)) {
           continue;
         }
 
@@ -517,19 +537,19 @@ function runWeightedAStar(
 
         let penalty = 1.0;
         if (mode === 'safe') {
-          const cliffPen = Math.pow(nextCell.cliffHazard / 26, 2.2) * 1.6;
+          const cliffPen = Math.pow(nextCell.cliffHazard / 34, 2.0) * 1.4;
           const slopePen =
-            nextCell.slopeDeg > 8
-              ? (nextCell.slopeDeg - 7) * 0.95
-              : nextCell.slopeDeg * 0.14;
+            nextCell.slopeDeg > 9
+              ? (nextCell.slopeDeg - 8) * 0.85
+              : nextCell.slopeDeg * 0.12;
           penalty += cliffPen + slopePen;
         } else if (mode === 'fast') {
-          const cliffPen = (nextCell.cliffHazard / 45) * 0.9;
-          const wallPen = nextCell.isObstacle ? 12 : 0;
+          const cliffPen = (nextCell.cliffHazard / 50) * 0.75;
+          const wallPen = nextBlocked ? 10 : 0;
           penalty += cliffPen + wallPen + nextCell.slopeDeg * 0.04;
         } else if (mode === 'water') {
-          const waterPen = ((100 - nextCell.combinedWaterProb) / 100) * 1.7;
-          const cliffPen = Math.pow(nextCell.cliffHazard / 30, 1.9) * 1.1;
+          const waterPen = ((100 - nextCell.combinedWaterProb) / 100) * 1.6;
+          const cliffPen = Math.pow(nextCell.cliffHazard / 36, 1.8) * 1.0;
           penalty += waterPen + cliffPen;
         }
 
@@ -549,17 +569,52 @@ function runWeightedAStar(
     return false;
   };
 
-  const reached = runSearch();
+  const reachedExact = runSearch();
+  let targetIdx = destIdx;
+  let snappedToSafeApproach = false;
+  let bestApproachDistKm = 0;
 
-  if (!reached) {
-    return unreachableResult(
-      '협곡·단층 절벽 또는 분화구 외벽으로 완전히 가로막혀 우회 가능한 안전 경로가 존재하지 않습니다.'
-    );
+  if (!reachedExact) {
+    // Pick the closest reachable safe grid cell to the intended destination!
+    let bestIdx = -1;
+    let bestScore = Infinity;
+    let bestPhysDist = Infinity;
+
+    for (let i = 0; i < total; i++) {
+      if (!closed[i]) continue;
+      const r = Math.floor(i / COLS);
+      const c = i % COLS;
+      const cell = grid[r][c];
+      if (cell.isObstacle || cell.slopeDeg >= 18.0) continue;
+      const distKm = haversineApproxKm(cell.lat, cell.unwrappedLon, dLat, dLon);
+      const score = distKm + (cell.slopeDeg > 11 ? (cell.slopeDeg - 11) * 3 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        bestIdx = i;
+        bestPhysDist = distKm;
+      }
+    }
+
+    // Reject only if trapped near start with zero meaningful progress toward a distant target
+    const trappedNearStart =
+      bestIdx === -1 ||
+      (bestIdx === startIdx && directDist > 25) ||
+      (directDist > 120 && bestPhysDist >= directDist * 0.94);
+
+    if (trappedNearStart) {
+      return unreachableResult(
+        '협곡·단층 절벽 또는 분화구 외벽으로 완전히 가로막혀 접근 가능한 우회 경로가 존재하지 않습니다.'
+      );
+    }
+
+    targetIdx = bestIdx;
+    snappedToSafeApproach = true;
+    bestApproachDistKm = bestPhysDist;
   }
 
   // Reconstruct raw grid cells
   const rawCells: TileTerrainCell[] = [];
-  let trace = destIdx;
+  let trace = targetIdx;
   while (trace !== -1) {
     const r = Math.floor(trace / COLS);
     const c = trace % COLS;
@@ -568,9 +623,12 @@ function runWeightedAStar(
   }
   rawCells.reverse();
 
-  // Anchor exact Start & Destination coordinates in continuous unwrapped longitude space
-  const startExact = sampleMarsTelemetry(sLat, sLon);
-  const destExact = sampleMarsTelemetry(dLat, dLon);
+  const endCell = rawCells[rawCells.length - 1];
+  const finalDestLat = snappedToSafeApproach ? endCell.lat : dLat;
+  const finalDestLon = snappedToSafeApproach ? endCell.unwrappedLon : dLon;
+
+  const startExact = sampleMarsTelemetry(startCell.lat, startCell.unwrappedLon);
+  const destExact = sampleMarsTelemetry(finalDestLat, finalDestLon);
 
   const coords: { lat: number; lon: number; cell: TileTerrainCell }[] = [
     {
@@ -589,18 +647,18 @@ function runWeightedAStar(
       cell,
     })),
     {
-      lat: dLat,
-      lon: dLon,
+      lat: finalDestLat,
+      lon: finalDestLon,
       cell: {
         ...destExact,
-        unwrappedLon: dLon,
+        unwrappedLon: finalDestLon,
         cliffHazard: 0,
         isFissureWall: false,
       },
     },
   ];
 
-  // Smooth interior points gently in continuous unwrapped coordinates (fixes ±180° wrap streak!)
+  // Smooth interior points gently in continuous single-map coordinates
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 1; i < coords.length - 1; i++) {
       const sLatAvg =
@@ -642,10 +700,10 @@ function runWeightedAStar(
     waterSum += cell.combinedWaterProb;
 
     let hazardLevel: 'low' | 'moderate' | 'high' = 'low';
-    if (cell.slopeDeg >= 13 || cell.cliffHazard >= 52) {
+    if (cell.slopeDeg >= 14 || cell.cliffHazard >= 60) {
       hazardLevel = 'high';
       hazards++;
-    } else if (cell.slopeDeg >= 7.5 || cell.cliffHazard >= 34) {
+    } else if (cell.slopeDeg >= 8.5 || cell.cliffHazard >= 40) {
       hazardLevel = 'moderate';
     }
 
@@ -661,8 +719,8 @@ function runWeightedAStar(
   }
 
   if (
-    maxSlope >= 19.5 ||
-    (mode !== 'fast' && hazards / Math.max(1, points.length) > 0.28)
+    maxSlope >= 21.5 ||
+    (mode !== 'fast' && hazards / Math.max(1, points.length) > 0.42)
   ) {
     return unreachableResult(
       `경로 상 위험 급경사 구간(최대 ${maxSlope.toFixed(1)}°)이 과도해 안전한 이동이 불가능합니다.`
@@ -806,17 +864,21 @@ function runWeightedAStar(
         ? '최단 신속 경로'
         : '수자원 경유 경로';
 
-  const summaryKo = `${modeLabel} · 총 ${accumKm.toFixed(
-    1
-  )} km (직선 대비 ${Math.max(
-    0,
-    Math.round((accumKm / Math.max(1, directDist) - 1) * 100)
-  )}% 우회) · 경유점 ${waypoints.length}개 · 최대 경사 ${maxSlope.toFixed(1)}°`;
+  const summaryKo = snappedToSafeApproach
+    ? `목적지 인근 절벽·위험 지형을 피해 가장 가까운 안전 접근 지점(원 목표 ${bestApproachDistKm.toFixed(1)}km 앞)으로 조정 · 총 ${accumKm.toFixed(1)} km`
+    : `${modeLabel} · 총 ${accumKm.toFixed(
+        1
+      )} km (직선 대비 ${Math.max(
+        0,
+        Math.round((accumKm / Math.max(1, directDist) - 1) * 100)
+      )}% 우회) · 경유점 ${waypoints.length}개 · 최대 경사 ${maxSlope.toFixed(1)}°`;
 
   return {
     found: true,
     mode,
     terrainSource: fromTiles ? 'nasa_tiles' : 'model',
+    snappedToSafeApproach,
+    originalDest: snappedToSafeApproach ? { lat: dLat, lon: dLon } : undefined,
     points,
     waypoints,
     totalDistanceKm: Number(accumKm.toFixed(1)),
@@ -836,12 +898,10 @@ export async function findMarsRouteFromNasaTiles(
   destCoord: { lat: number; lon: number },
   mode: NavigationMode
 ): Promise<RouteResult> {
-  const sLat = startCoord.lat;
+  const sLat = Math.max(-85, Math.min(85, startCoord.lat));
   const sLon = normalizeLon(startCoord.lon);
-  const dLat = destCoord.lat;
-  let dLon = normalizeLon(destCoord.lon);
-  if (dLon - sLon > 180) dLon -= 360;
-  if (dLon - sLon < -180) dLon += 360;
+  const dLat = Math.max(-85, Math.min(85, destCoord.lat));
+  const dLon = normalizeLon(destCoord.lon);
 
   const directDist = haversineApproxKm(sLat, sLon, dLat, dLon);
   if (directDist < 1.2) {
@@ -897,8 +957,8 @@ export async function findMarsRouteFromNasaTiles(
 
   const latMax = Math.min(85, Math.max(sLat, dLat) + padLat);
   const latMin = Math.max(-85, Math.min(sLat, dLat) - padLat);
-  const lonMin = Math.min(sLon, dLon) - padLon;
-  const lonMax = Math.max(sLon, dLon) + padLon;
+  const lonMin = Math.max(-180, Math.min(sLon, dLon) - padLon);
+  const lonMax = Math.min(180, Math.max(sLon, dLon) + padLon);
 
   const ROWS = 96;
   const COLS = 120;
