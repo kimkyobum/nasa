@@ -436,17 +436,17 @@ export default function App() {
       } else if (clickTool === 'start') {
         setStartCoord({ lat: pt.lat, lon: pt.lon });
         setClickTool(destCoord === null ? 'destination' : null);
-        if (near) setActiveDrawer('place');
+        if (near && guidePhase !== 'active') setActiveDrawer('place');
       } else if (clickTool === 'destination') {
         setDestCoord({ lat: pt.lat, lon: pt.lon });
         setClickTool(null);
-        if (near) setActiveDrawer('place');
+        if (near && guidePhase !== 'active') setActiveDrawer('place');
       } else {
         // Open precision inspect panel on map click
         setActiveDrawer('inspect');
       }
     },
-    [regionsOpen, clickTool, destCoord, installDomeAt]
+    [regionsOpen, clickTool, destCoord, installDomeAt, guidePhase]
   );
 
   const handlePinClick = useCallback((pin: 'start' | 'destination') => {
@@ -636,7 +636,7 @@ export default function App() {
         className="absolute top-0 bottom-0 left-0 w-[68px] h-full bg-[#070c16] border-r border-white/15 flex flex-col items-center justify-between py-3 z-40 select-none shadow-2xl"
       >
         <div className="flex flex-col items-center w-full gap-1.5">
-          {/* Pure Typographic Martian Brand Wordmark (Text-Only) */}
+          {/* Pure Text Wordmark: The Vision of Mars & Water Extraction */}
           <button
             type="button"
             onClick={() => {
@@ -647,14 +647,19 @@ export default function App() {
               'The Vision of Mars and warter extraction (Reset view)',
               'The Vision of Mars and warter extraction (시점 초기화)'
             )}
-            className="w-full px-1.5 py-2 mb-1 flex flex-col items-center justify-center hover:bg-white/[0.04] transition-colors group"
+            className="w-full px-1 py-1.5 mb-0.5 flex flex-col items-center justify-center hover:bg-white/[0.04] transition-colors text-center"
           >
-            <span className="text-[15px] font-black tracking-[0.18em] leading-none bg-gradient-to-b from-orange-200 via-orange-400 to-rose-600 bg-clip-text text-transparent pl-[0.18em]">
+            <span className="text-[7px] font-semibold uppercase tracking-[0.14em] text-slate-400 leading-tight">
+              Vision of
+            </span>
+            <span className="text-[13px] font-extrabold tracking-[0.14em] text-orange-300 leading-none mt-0.5 pl-[0.14em]">
               MARS
             </span>
-            <span className="w-9 h-[1px] my-1 bg-gradient-to-r from-transparent via-orange-400/75 to-transparent" />
-            <span className="text-[7px] font-mono font-semibold tracking-[0.22em] text-cyan-300/90 leading-none pl-[0.22em]">
-              HYDRO
+            <span className="text-[7.5px] font-bold uppercase tracking-[0.08em] text-sky-300 leading-tight mt-0.5">
+              &amp; Water
+            </span>
+            <span className="text-[6.5px] font-semibold uppercase tracking-[0.06em] text-slate-300 leading-tight">
+              Extraction
             </span>
           </button>
 
@@ -1528,6 +1533,7 @@ export default function App() {
                       </button>
                     </div>
 
+                    <div data-guide-target="route-pickers" className="space-y-2.5">
                     <button
                       type="button"
                       onClick={() =>
@@ -1593,9 +1599,10 @@ export default function App() {
                         {clickTool === 'destination' ? pick('Picking', '선택 중') : pick('Change', '변경')}
                       </span>
                     </button>
+                    </div>
 
                     {/* Install Bio-Dome at Target or Anywhere on Nav Map */}
-                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <div data-guide-target="dome-at-target" className="grid grid-cols-2 gap-1.5 pt-1">
                       <button
                         type="button"
                         disabled={!destCoord}
@@ -1797,7 +1804,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-3 border-t border-white/15">
+                  <div data-guide-target="sensor-layers" className="space-y-2 pt-3 border-t border-white/15">
                     <span className="text-slate-200 block">
                       {pick('Scientific Sensor Layers', '과학 센서 레이어')}
                     </span>
@@ -2219,7 +2226,7 @@ export default function App() {
 
         {/* Right-Side Interactive 3D Bio-Dome Habitat & Simulation Panel */}
         {domePanelOpen && activeDome && !isPlaceFullscreen && (
-          <div className="absolute top-0 right-0 bottom-0 z-30 pointer-events-auto">
+          <div data-guide-target="dome-panel" className="absolute top-0 right-0 bottom-0 z-30 pointer-events-auto">
             <MarsDomeSidePanel
               dome={activeDome}
               allDomes={deployedDomes}
@@ -2262,13 +2269,10 @@ export default function App() {
           </div>
         )}
 
-        {/* First-Visit Prompt & Interactive 3-Step Mission Guide */}
+        {/* First-Visit Prompt & Spotlight Speech-Bubble Arrow Guide */}
         <MissionOnboardingGuide
           phase={guidePhase}
           step={guideStep}
-          leftOffsetPx={isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}
-          rightOffsetPx={rightPanelOffsetPx}
-          layers={layers}
           activeLayersCount={activeLayersCount}
           startSet={Boolean(startCoord)}
           destSet={Boolean(destCoord)}
@@ -2278,22 +2282,6 @@ export default function App() {
           onSkipGuide={closeAndRememberGuide}
           onGoToStep={goToGuideStep}
           onFinishGuide={closeAndRememberGuide}
-          onQuickEnableWaterSoil={() =>
-            setLayers((prev) => ({
-              ...prev,
-              swimWater: true,
-              soilFertility: true,
-            }))
-          }
-          onSelectPickTool={(tool) => {
-            setActiveDrawer('nav');
-            setClickTool(tool);
-          }}
-          onDeployDomeAtTarget={() => {
-            if (destCoord) {
-              installDomeAt(destCoord.lat, destCoord.lon);
-            }
-          }}
         />
       </main>
 
