@@ -17,7 +17,10 @@ import {
   SensorLayers,
 } from '../types/mars';
 
+import { Language } from '../i18n/LanguageContext';
+
 interface MarsMapCanvasProps {
+  language: Language;
   baseLayer: MarsBaseLayerId;
   centerLat: number;
   centerLon: number;
@@ -120,6 +123,7 @@ function elevationToRgb(elevM: number): [number, number, number] {
 
 export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
   ({
+    language,
     baseLayer,
     centerLat,
     centerLon,
@@ -171,6 +175,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     const lastHoverEmitRef = useRef<number>(0);
 
     const propsRef = useRef({
+      language,
       baseLayer,
       startCoord,
       destCoord,
@@ -186,6 +191,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       onViewportChange,
     });
     propsRef.current = {
+      language,
       baseLayer,
       startCoord,
       destCoord,
@@ -551,6 +557,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       if (!ctx) return;
 
       const {
+        language: curLanguage,
         baseLayer: curBaseLayer,
         startCoord: curStart,
         destCoord: curDest,
@@ -794,7 +801,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
             ctx.arc(bp.x, bp.y, 3.8, 0, Math.PI * 2);
             ctx.fill();
 
-            const tag = `${curRouteBeacon.distanceFromStartKm}km · ${curRouteBeacon.elevationM.toLocaleString()}m · 물 ${curRouteBeacon.waterProb}%`;
+            const waterWord = curLanguage === 'en' ? 'Water' : '물';
+            const tag = `${curRouteBeacon.distanceFromStartKm}km · ${curRouteBeacon.elevationM.toLocaleString()}m · ${waterWord} ${curRouteBeacon.waterProb}%`;
             ctx.font = '600 10px "JetBrains Mono", monospace';
             const tw = ctx.measureText(tag).width;
             const bx = clamp(bp.x - tw / 2 - 7, 10, width - tw - 24);
@@ -870,14 +878,15 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         ctx.stroke();
 
         const isBold = lm.tier === 1 || isSelected;
+        const lmLabel = curLanguage === 'en' ? lm.nameEn : lm.nameKo;
         const fontStr = isBold
-          ? '600 12px "IBM Plex Sans KR", "Plus Jakarta Sans", sans-serif'
-          : '400 11px "IBM Plex Sans KR", "Plus Jakarta Sans", sans-serif';
-        const cacheKey = `${isBold ? '1' : '0'}:${lm.nameKo}`;
+          ? '600 12px "Plus Jakarta Sans", "IBM Plex Sans KR", sans-serif'
+          : '400 11px "Plus Jakarta Sans", "IBM Plex Sans KR", sans-serif';
+        const cacheKey = `${curLanguage}:${isBold ? '1' : '0'}:${lmLabel}`;
         let tw = labelWidthCache.get(cacheKey);
         if (tw === undefined) {
           ctx.font = fontStr;
-          tw = ctx.measureText(lm.nameKo).width;
+          tw = ctx.measureText(lmLabel).width;
           labelWidthCache.set(cacheKey, tw);
         }
 
@@ -903,7 +912,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
           placedLabels.push(box);
           ctx.font = fontStr;
           ctx.fillStyle = 'rgba(3, 5, 8, 0.9)';
-          ctx.fillText(lm.nameKo, lx + 1, ly + 1);
+          ctx.fillText(lmLabel, lx + 1, ly + 1);
           ctx.fillStyle = isSelected
             ? '#FFFFFF'
             : lm.tier === 1
@@ -911,7 +920,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
               : lm.tier === 2
                 ? '#E2E8F0'
                 : '#CBD5E1';
-          ctx.fillText(lm.nameKo, lx, ly);
+          ctx.fillText(lmLabel, lx, ly);
         }
       };
 
@@ -1045,6 +1054,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     useEffect(() => {
       scheduleDraw();
     }, [
+      language,
       baseLayer,
       startCoord,
       destCoord,
@@ -1351,7 +1361,7 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
                     onClick={onShowArGuide}
                     className="text-[11px] font-sans font-medium text-cyan-200 hover:text-white underline underline-offset-2"
                   >
-                    ? 사용법
+                    {language === 'en' ? '? Guide' : '? 사용법'}
                   </button>
                 </>
               )}
@@ -1367,7 +1377,9 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
                   SCAN {hoveredTelemetry.lat.toFixed(1)}°, {hoveredTelemetry.lon.toFixed(1)}°
                 </span>
                 <span className="text-white/25">|</span>
-                <span>고도 {hoveredTelemetry.elevationM.toLocaleString()}m</span>
+                <span>
+                  {language === 'en' ? 'ELEV' : '고도'} {hoveredTelemetry.elevationM.toLocaleString()}m
+                </span>
                 <span className="text-white/25">|</span>
                 <span
                   className={
@@ -1378,15 +1390,15 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
                         : 'text-emerald-300'
                   }
                 >
-                  경사 {hoveredTelemetry.slopeDeg}°
+                  {language === 'en' ? 'SLOPE' : '경사'} {hoveredTelemetry.slopeDeg}°
                 </span>
                 <span className="text-white/25">|</span>
                 <span className="text-sky-300">
-                  지하수 {hoveredTelemetry.combinedWaterProb}%
+                  {language === 'en' ? 'WATER' : '지하수'} {hoveredTelemetry.combinedWaterProb}%
                 </span>
                 <span className="text-white/25">|</span>
                 <span className="font-sans font-medium text-white">
-                  {hoveredTelemetry.farmingLabelKo}
+                  {language === 'en' ? hoveredTelemetry.farmingLabelEn : hoveredTelemetry.farmingLabelKo}
                 </span>
               </div>
             )}

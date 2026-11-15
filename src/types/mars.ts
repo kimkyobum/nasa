@@ -20,11 +20,11 @@ export type FarmingStrategy =
   | 'explore_only';
 
 export type FarmingTier =
-  | 'optimal'     // 파랑: 최상 (현지 토양·지하수 최적)
-  | 'suitable'    // 초록: 적합 (비닐하우스·토양 개량)
-  | 'possible'    // 노랑~주황: 가능성 있음 (밀폐 온실·지구흙 수경재배)
-  | 'unsuitable'  // 빨강: 농업 불가 (고지대·수분 부족)
-  | 'lethal';     // 갈색: 진입 극위험 (절벽·칼데라·치명 구역)
+  | 'optimal'     // Blue: Optimal (local clay soil & subsurface water)
+  | 'suitable'    // Green: Suitable (greenhouse & soil remediation)
+  | 'possible'    // Amber: Viable (sealed dome & Earth-media hydroponics)
+  | 'unsuitable'  // Red: Unsuitable (high elevation / arid)
+  | 'lethal';     // Brown: Extreme Hazard (cliffs, calderas, lethal terrain)
 
 export interface SensorLayers {
   swimWater: boolean;
@@ -50,12 +50,15 @@ export interface Landmark {
   nameEn: string;
   type: LandmarkType;
   rawCategory: string;
+  rawCategoryEn?: string;
   lat: number;
   lon: number;
   elevationM: number;
   tier: LandmarkTier;
   descriptionKo: string;
+  descriptionEn?: string;
   waterNoteKo: string;
+  waterNoteEn?: string;
 }
 
 export interface MarsTelemetryPoint {
@@ -74,7 +77,9 @@ export interface MarsTelemetryPoint {
   recommendedStrategy: FarmingStrategy;
   farmingTier: FarmingTier;
   farmingLabelKo: string;
+  farmingLabelEn: string;
   farmingSolutionKo: string;
+  farmingSolutionEn: string;
   iceDepthM?: number;
   solarFluxWm2?: number;
   daylightHours?: number;
@@ -93,6 +98,7 @@ export interface RegionViewPreset {
   nameKo: string;
   nameEn: string;
   subtitleKo: string;
+  subtitleEn: string;
   centerLat: number;
   centerLon: number;
   ppd: number; // pixels per degree at default view
@@ -117,10 +123,12 @@ export interface RouteWaypoint {
   segmentDistanceKm: number;
   bearingDeg: number;
   directionKo: string;
+  directionEn: string;
   elevationM: number;
   slopeDeg: number;
   waterProb: number;
   instructionKo: string;
+  instructionEn: string;
   tag: 'start' | 'avoid' | 'water' | 'checkpoint' | 'target';
 }
 
@@ -141,6 +149,7 @@ export interface RouteResult {
   hazardSegmentsCount: number;
   safetyScore: number;
   summaryKo: string;
+  summaryEn: string;
 }
 
 export interface NasaDatasetSpec {
@@ -149,10 +158,14 @@ export interface NasaDatasetSpec {
   instrument: string;
   mission: string;
   titleKo: string;
+  titleEn: string;
   resolution: string;
+  resolutionEn: string;
   dataFormat: string;
   portalName: string;
   portalUrl: string;
   purposeKo: string;
+  purposeEn: string;
   howItWorksKo: string;
+  howItWorksEn: string;
 }

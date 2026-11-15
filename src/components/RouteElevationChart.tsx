@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 import { RoutePoint, RouteResult } from '../types/mars';
 
 interface RouteElevationChartProps {
@@ -13,17 +14,18 @@ export const RouteElevationChart: React.FC<RouteElevationChartProps> = ({
   onHoverRoutePoint,
   onClose,
 }) => {
+  const { pick } = useLanguage();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   if (!route.found || route.points.length < 2) {
     return (
       <div className="relative h-[144px] bg-slate-900/42 backdrop-blur-xl border border-white/25 rounded-xl p-4 flex items-center justify-center text-xs text-slate-100 shadow-2xl">
-        <span>{route.summaryKo}</span>
+        <span>{pick(route.summaryEn, route.summaryKo)}</span>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            aria-label="단면 그래프 닫기"
+            aria-label={pick('Close profile chart', '단면 그래프 닫기')}
             className="absolute top-2.5 right-2.5 p-1 text-slate-200 hover:text-white rounded"
           >
             <X className="w-3.5 h-3.5" />
@@ -83,15 +85,15 @@ export const RouteElevationChart: React.FC<RouteElevationChartProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
         <div className="flex items-center gap-2.5 text-[11px]">
           <span className="font-semibold text-white">
-            고도 · 지하수 단면
+            {pick('Elevation · Water Profile', '고도 · 지하수 단면')}
           </span>
           <span className="flex items-center gap-1 text-amber-300">
             <span className="w-2.5 h-0.5 bg-amber-400 inline-block" />
-            고도(m)
+            {pick('Elev (m)', '고도(m)')}
           </span>
           <span className="flex items-center gap-1 text-cyan-300">
             <span className="w-2.5 h-0.5 border-b border-dashed border-cyan-400 inline-block" />
-            지하수(%)
+            {pick('Water (%)', '지하수(%)')}
           </span>
         </div>
 
@@ -103,7 +105,7 @@ export const RouteElevationChart: React.FC<RouteElevationChartProps> = ({
                 {hoveredPoint.elevationM.toLocaleString()}m
               </span>
               <span className="text-cyan-300">
-                물 {hoveredPoint.waterProb}%
+                {pick('Water', '물')} {hoveredPoint.waterProb}%
               </span>
               <span
                 className={
@@ -119,14 +121,14 @@ export const RouteElevationChart: React.FC<RouteElevationChartProps> = ({
             </div>
           ) : (
             <div className="text-[11px] font-mono text-slate-300 tabular-nums">
-              {route.totalDistanceKm}km · 로버 {route.estimatedHoursRover}h
+              {route.totalDistanceKm}km · {pick('Rover', '로버')} {route.estimatedHoursRover}h
             </div>
           )}
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              aria-label="단면 그래프 닫기"
+              aria-label={pick('Close profile chart', '단면 그래프 닫기')}
               className="p-0.5 text-slate-200 hover:text-white rounded"
             >
               <X className="w-3.5 h-3.5" />

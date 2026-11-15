@@ -24,6 +24,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '화성 전체',
     nameEn: 'Global Mars',
     subtitleKo: 'NASA Mars Trek 전구 위성 지도 (EPSG:104905)',
+    subtitleEn: 'NASA Mars Trek Global Satellite Map (EPSG:104905)',
     centerLat: 5,
     centerLon: 0,
     ppd: 3.6,
@@ -33,6 +34,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '타르시스 화산대',
     nameEn: 'Tharsis (MC-9/17)',
     subtitleKo: '올림푸스 · 아르시아 · 파보니스 · 아스크라에우스 거대 순상 화산군',
+    subtitleEn: 'Olympus, Arsia, Pavonis & Ascraeus Giant Shield Volcanoes',
     centerLat: 5.5,
     centerLon: -116.0,
     ppd: 14,
@@ -42,6 +44,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '엘리시움 평원',
     nameEn: 'Elysium (MC-15)',
     subtitleKo: '엘리시움 화산군 및 아타바스카 지하 얼음 유출로',
+    subtitleEn: 'Elysium Volcanic Rise & Athabasca Subsurface Ice Outflow',
     centerLat: 22.0,
     centerLon: 152.0,
     ppd: 14,
@@ -51,6 +54,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '알바 · 아르카디아',
     nameEn: 'Alba Mons & Arcadia (MC-2/3)',
     subtitleKo: '열수 균열(HCl) 및 심도 0.2~2m 얕은 지하 빙하 밀집 전이 지대',
+    subtitleEn: 'Hydrothermal Fissures (HCl) & Shallow 0.2–2m Ice Transition Zone',
     centerLat: 40.0,
     centerLon: -110.0,
     ppd: 52,
@@ -60,6 +64,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '마리너 계곡',
     nameEn: 'Valles Marineris (MC-18)',
     subtitleKo: '녹티스 라비린투스 ~ 코프라테스 카스마 대협곡 단층 지대',
+    subtitleEn: 'Noctis Labyrinthus to Coprates Chasma Grand Canyon Faults',
     centerLat: -10.5,
     centerLon: -75.0,
     ppd: 15,
@@ -69,6 +74,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '유토피아 평원',
     nameEn: 'Utopia Planitia (MC-6/7)',
     subtitleKo: '대규모 지하 빙하층(SWIM) 분포 북부 저지대 평원',
+    subtitleEn: 'Northern Lowland Plains with Extensive SWIM Subsurface Ice Sheets',
     centerLat: 44.0,
     centerLon: 105.0,
     ppd: 12,
@@ -78,6 +84,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '시르티스 · 이시디스',
     nameEn: 'Syrtis Major & Isidis (MC-13)',
     subtitleKo: '예제로 분화구 및 닐리 포사이 점토 광물 지대',
+    subtitleEn: 'Jezero Crater & Nili Fossae Phyllosilicate Clay Deposits',
     centerLat: 15.0,
     centerLon: 76.0,
     ppd: 14,
@@ -87,6 +94,7 @@ export const REGION_PRESETS: Record<RegionId, RegionViewPreset> = {
     nameKo: '헬라스 분지',
     nameEn: 'Hellas Basin (MC-28)',
     subtitleKo: '남반구 최대 충돌 분지 및 높은 대기압 저지대',
+    subtitleEn: 'Largest Southern Impact Basin & High-Pressure Lowland',
     centerLat: -42.5,
     centerLon: 72.0,
     ppd: 13,
@@ -293,34 +301,42 @@ export function evaluateFarmingTier(
   recommendedStrategy: FarmingStrategy;
   farmingTier: FarmingTier;
   farmingLabelKo: string;
+  farmingLabelEn: string;
   farmingSolutionKo: string;
+  farmingSolutionEn: string;
   tierCode: 0 | 1 | 2 | 3 | 4;
 } {
-  // 0: 갈색 (진입·생존·농업 절대 불가 극위험 구역)
+  // 0: Brown (Extreme Hazard — entry & farming impossible)
   if (isObstacle || slopeDeg >= 20.0 || elev >= 14000 || roughnessHazard >= 86) {
     return {
       recommendedStrategy: 'explore_only',
       farmingTier: 'lethal',
       farmingLabelKo: '진입 극위험',
+      farmingLabelEn: 'Extreme Hazard',
       farmingSolutionKo:
         '절벽·칼데라·극한 경사로 인해 로버 전복 및 생존 위협이 높아 진입과 농업이 불가능합니다.',
+      farmingSolutionEn:
+        'Entry and farming are impossible due to sheer cliffs, calderas, or extreme slopes posing severe rover rollover and survival risks.',
       tierCode: 0,
     };
   }
 
-  // 1: 빨강 (무슨 짓을 해도 농업 불가: 극고지대 저기압 / 급경사 / 극건조)
+  // 1: Red (Unsuitable — extreme elevation / steep slope / arid)
   if (slopeDeg >= 13.5 || elev >= 8500 || combinedWaterProb < 24) {
     return {
       recommendedStrategy: 'explore_only',
       farmingTier: 'unsuitable',
       farmingLabelKo: '농업 불가',
+      farmingLabelEn: 'Unsuitable',
       farmingSolutionKo:
         '수분 부족·고지대 저기압·가파른 경사로 온실 설치가 어렵습니다. 인근 저지대 평원 이동을 권장합니다.',
+      farmingSolutionEn:
+        'Greenhouse deployment is infeasible due to water scarcity, low-pressure high altitude, or steep terrain. Relocate to nearby lowland plains.',
       tierCode: 1,
     };
   }
 
-  // 4: 파랑 (최상: 완만한 저지대 평지 + 풍부한 지하수 + 비옥한 점토 토양)
+  // 4: Blue (Optimal — flat lowland + rich water ice + fertile clay regolith)
   if (
     slopeDeg < 6.5 &&
     elev < 2500 &&
@@ -331,13 +347,16 @@ export function evaluateFarmingTier(
       recommendedStrategy: 'direct_soil',
       farmingTier: 'optimal',
       farmingLabelKo: '농업 최상',
+      farmingLabelEn: 'Optimal',
       farmingSolutionKo:
         '풍부한 지하 얼음과 비옥한 점토 토양·평지가 결합된 최적지입니다. 가압 비닐하우스 설치만으로 현지 토양 재배가 가능합니다.',
+      farmingSolutionEn:
+        'Premier site combining abundant subsurface ice, fertile clay regolith, and flat terrain. Direct local-soil farming is viable with pressurized greenhouses.',
       tierCode: 4,
     };
   }
 
-  // 3: 초록 (적합: 비닐하우스 + 간단한 과염소산염 세척/개량으로 현지 토양 재배 가능)
+  // 3: Green (Suitable — greenhouse + perchlorate wash/compost)
   if (
     slopeDeg < 10.0 &&
     elev < 5800 &&
@@ -348,19 +367,25 @@ export function evaluateFarmingTier(
       recommendedStrategy: 'direct_soil',
       farmingTier: 'suitable',
       farmingLabelKo: '농업 적합',
+      farmingLabelEn: 'Suitable',
       farmingSolutionKo:
         '가압 비닐하우스를 세우고 지하 해빙수로 과염소산염을 씻어내며 퇴비를 섞으면 현지 토양에서도 안정적으로 농사를 지을 수 있습니다.',
+      farmingSolutionEn:
+        'Stable farming in local regolith is viable by erecting pressurized domes, washing perchlorates with subsurface meltwater, and mixing compost.',
       tierCode: 3,
     };
   }
 
-  // 2: 노랑~주황 (노력해서라도 농사 가능성 있음: 밀폐 비닐하우스 + 지구 흙 수경재배)
+  // 2: Amber (Viable with sealed dome + Earth-media hydroponics)
   return {
     recommendedStrategy: 'earth_soil_hydro',
     farmingTier: 'possible',
     farmingLabelKo: '농업 가능성 있음',
+    farmingLabelEn: 'Viable (Hydro)',
     farmingSolutionKo:
       '현지 토양은 척박하지만 가압 비닐하우스(밀폐 온실)를 세워 지구 흙과 양액을 투입하고 지하 얼음 해빙수를 끌어오면 충분히 농사를 지을 수 있습니다.',
+    farmingSolutionEn:
+      'Although local regolith is barren, cultivation is viable inside a sealed pressurized greenhouse using Earth substrate, nutrient solution, and subsurface meltwater.',
     tierCode: 2,
   };
 }
@@ -573,7 +598,9 @@ export function sampleMarsTelemetry(
     recommendedStrategy: evalRes.recommendedStrategy,
     farmingTier: evalRes.farmingTier,
     farmingLabelKo: evalRes.farmingLabelKo,
+    farmingLabelEn: evalRes.farmingLabelEn,
     farmingSolutionKo: evalRes.farmingSolutionKo,
+    farmingSolutionEn: evalRes.farmingSolutionEn,
     iceDepthM: albaIce?.iceDepthM,
     solarFluxWm2: albaIce?.solarFluxWm2,
     daylightHours: albaIce?.daylightHours,
@@ -664,14 +691,20 @@ export const NASA_DATASETS: NasaDatasetSpec[] = [
     instrument: 'Viking MDIM 2.1 + MOLA + CTX',
     mission: 'NASA JPL Solar System Treks',
     titleKo: 'NASA Mars Trek 실시간 WMTS 타일 API (현재 지도에 직접 연결됨)',
+    titleEn: 'NASA Mars Trek Live WMTS Tile API (Connected Directly to Map)',
     resolution: '232 m/px (Viking 실사) · 463 m/px (MOLA 컬러 고도)',
+    resolutionEn: '232 m/px (Viking Imagery) · 463 m/px (MOLA Color Shaded Relief)',
     dataFormat: 'RESTful WMTS (EPSG:4326 / default028mm)',
     portalName: 'NASA Mars Trek Portal',
     portalUrl: 'https://trek.nasa.gov/mars/',
     purposeKo:
       '실제 화성 표면의 크레이터, 협곡, 올림푸스 산 등의 초고해상도 위성 사진과 MOLA 지형 음영 타일을 웹사이트에 직접 띄웁니다.',
+    purposeEn:
+      'Streams real high-resolution satellite imagery of craters, canyons, Olympus Mons, and MOLA shaded relief tiles directly onto the map.',
     howItWorksKo:
       '이 웹사이트는 현재 NASA Mars Trek의 공식 WMTS 타일 서버(trek.nasa.gov/tiles/Mars/EQ/...)에서 실시간으로 타일을 수신해 렌더링합니다.',
+    howItWorksEn:
+      'This web application fetches and renders live map tiles directly from the official NASA Mars Trek WMTS server (trek.nasa.gov/tiles/Mars/EQ/...).',
   },
   {
     id: 'swim',
@@ -679,14 +712,20 @@ export const NASA_DATASETS: NasaDatasetSpec[] = [
     instrument: 'SHARAD (MRO) + MARSIS (Mars Express) + GRS',
     mission: 'NASA PSI / JPL SWIM Project',
     titleKo: 'SWIM 지하 얼음 통합 지도 (Subsurface Water Ice Mapping)',
+    titleEn: 'SWIM Subsurface Water Ice Mapping',
     resolution: '픽셀당 ~3~5 km (글로벌 중·저위도 커버)',
+    resolutionEn: '~3–5 km/px (Global Mid-to-Low Latitude Coverage)',
     dataFormat: 'GeoTIFF / NetCDF / PDS4',
     portalName: 'NASA PSI SWIM Portal',
     portalUrl: 'https://swim.psi.edu/',
     purposeKo:
       '화성 지표 아래 0~100m 깊이에 얼음이나 함수층이 존재할 확률(Consistency Index)을 계산하는 핵심 데이터입니다.',
+    purposeEn:
+      'Core dataset computing the probability (Consistency Index) of buried water ice or hydrated layers 0–100m beneath the Martian surface.',
     howItWorksKo:
       '지하 투과 레이더(SHARAD)의 유전율 반사 신호, 열관성(THEMIS), 중성자 분광기 데이터를 융합하여 화산 기저부나 유토피아 평원의 지하 얼음 매장 확률을 산출합니다.',
+    howItWorksEn:
+      'Fuses SHARAD radar dielectric reflections, THEMIS thermal inertia, and neutron spectrometer data to estimate buried ice deposits around volcanoes and Utopia Planitia.',
   },
   {
     id: 'grs',
@@ -694,14 +733,20 @@ export const NASA_DATASETS: NasaDatasetSpec[] = [
     instrument: 'Gamma Ray Spectrometer (GRS) & Neutron Spectrometer',
     mission: '2001 Mars Odyssey',
     titleKo: '감마선·중성자 분광기 수소(H₂O) 함량 데이터',
+    titleEn: 'GRS & Neutron Spectrometer Hydrogen (H₂O) Abundance',
     resolution: '약 300~500 km 풋프린트 (표층 1m 깊이)',
+    resolutionEn: '~300–500 km footprint (Top 1m Regolith)',
     dataFormat: 'PDS3 / GeoTIFF (WTH2O)',
     portalName: 'NASA PDS Geosciences Node',
     portalUrl: 'https://pds-geosciences.wustl.edu/missions/odyssey/grs.html',
     purposeKo:
       '제안하신 "감마선" 기술에 해당하는 실제 NASA 데이터로, 토양 표층 1m 이내에 결합된 물 분자(WEH) 비율(%)을 측정합니다.',
+    purposeEn:
+      'Measures Water-Equivalent Hydrogen (WEH %) bound within the top 1m of Martian regolith using orbital gamma-ray and neutron spectroscopy.',
     howItWorksKo:
       '우주선이 화성 토양과 충돌할 때 방출되는 감마선과 중성자의 에너지 감쇠를 분석해 수소 원자 밀도(=수분 함량)를 역산합니다.',
+    howItWorksEn:
+      'Analyzes energy attenuation of cosmic-ray-induced gamma rays and neutrons from Martian soil to invert hydrogen atomic density (water content).',
   },
   {
     id: 'mola',
@@ -709,43 +754,61 @@ export const NASA_DATASETS: NasaDatasetSpec[] = [
     instrument: 'MOLA (Mars Orbiter Laser Altimeter)',
     mission: 'Mars Global Surveyor (MGS)',
     titleKo: 'MOLA 레이저 고도계 DEM 및 경사도 데이터',
+    titleEn: 'MOLA Laser Altimeter DEM & Slope Telemetry',
     resolution: '463 m/pixel (글로벌 MEGDR 128ppd)',
+    resolutionEn: '463 m/px (Global MEGDR 128 ppd)',
     dataFormat: 'GeoTIFF / IMG / PDS3',
     portalName: 'USGS Astrogeology Science Center',
     portalUrl: 'https://astrogeology.usgs.gov/search/map/Mars/GlobalSurveyor/MOLA/Mars_MGS_MOLA_DEM_mosaic_global_463m',
     purposeKo:
       '제안하신 "방사 레이저" 고도 측정 기술이며, 길찾기(네비게이션) 알고리즘의 경사도(Slope) 및 위험 지형 비용 계산의 뼈대입니다.',
+    purposeEn:
+      'Provides precision laser altimetry elevation and forms the backbone for slope angle (°) and terrain hazard cost modeling in route pathfinding.',
     howItWorksKo:
       '레이저 펄스 왕복 시간으로 정밀 고도(m)를 측정하고, 인접 픽셀 간 고도 차로 경사각(°)을 계산해 로버 전복 위험 구간을 회피합니다.',
+    howItWorksEn:
+      'Measures elevation (m) via laser pulse round-trip time and computes slope angles (°) across adjacent pixels to avoid rover rollover hazards.',
   },
   {
     id: 'crism',
     category: 'soil',
-    instrument: 'CRISM (영상 분광계) & OMEGA',
+    instrument: 'CRISM & OMEGA Imaging Spectrometers',
     mission: 'MRO / Mars Express',
     titleKo: 'CRISM 광물 성분 및 토양 독성(점토·과염소산염) 데이터',
+    titleEn: 'CRISM Mineralogy & Soil Toxicity (Clays & Perchlorates)',
     resolution: '18~200 m/pixel',
+    resolutionEn: '18–200 m/px',
     dataFormat: 'PDS3 / Spectral Cubes',
     portalName: 'PDS Geosciences CRISM',
     portalUrl: 'https://pds-geosciences.wustl.edu/missions/mro/crism.htm',
     purposeKo:
       '화성 현지 토양으로 농사가 가능한지(점토광물 풍부 vs 과염소산염 독성) 판별해 "지구 흙 수경재배 전환 여부"를 결정합니다.',
+    purposeEn:
+      'Evaluates whether local regolith supports farming (clay-rich vs. perchlorate-toxic) to decide between local soil remediation or Earth-media hydroponics.',
     howItWorksKo:
       '적외선 반사 스펙트럼으로 물에 의해 형성된 점토(Phyllosilicates)와 황산염을 탐지합니다.',
+    howItWorksEn:
+      'Detects water-altered phyllosilicate clays and sulfates from infrared reflectance absorption spectra.',
   },
   {
     id: 'themis',
     category: 'ar_nav',
-    instrument: 'THEMIS (열방출 영상 시스템) & InSight',
+    instrument: 'THEMIS (Thermal Emission Imaging System) & InSight',
     mission: '2001 Mars Odyssey / InSight',
     titleKo: 'THEMIS 열관성(Thermal Inertia) 및 지반 강도 데이터',
+    titleEn: 'THEMIS Thermal Inertia & Ground Firmness Data',
     resolution: '100 m/pixel',
+    resolutionEn: '100 m/px',
     dataFormat: 'GeoTIFF / PDS3',
     portalName: 'ASU Mars Space Flight Facility',
     portalUrl: 'https://themis.asu.edu/',
     purposeKo:
       '모래 늪(Dust trap, 로버 바퀴 빠짐)과 단단한 기반암을 구분하고, AR 바이저의 지면 안전도 경고를 제공합니다.',
+    purposeEn:
+      'Distinguishes soft dust traps (wheel-sinkage zones) from solid bedrock and powers AR visor surface safety warnings.',
     howItWorksKo:
       '낮과 밤의 지표 온도 변화율(열관성)을 계산해 미세먼지 구덩이를 네비게이션 경로에서 회피합니다.',
+    howItWorksEn:
+      'Computes thermal inertia from day-night surface temperature swings to route rovers around fine-dust traps.',
   },
 ];

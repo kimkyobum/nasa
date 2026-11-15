@@ -14,6 +14,7 @@ import {
   FlaskConical,
   Info,
 } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 import { Landmark, MarsTelemetryPoint } from '../types/mars';
 import {
   analyzeMarsFarmingPotential,
@@ -43,6 +44,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
   onSetAsWaterSource,
   onViewIn3D,
 }) => {
+  const { pick } = useLanguage();
   const recipe = useMemo(() => analyzeMarsFarmingPotential(point), [point]);
   const [selectedCrop, setSelectedCrop] = useState<MarsCrop>(
     () => recipe.recommendedCrops[0] ?? MARS_CROPS_DATABASE[0]
@@ -72,13 +74,14 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <h2 className="text-sm font-bold text-white">
-                  {landmark ? landmark.nameKo : '선택 지점'} 온실 재배 분석
+                  {landmark ? pick(landmark.nameEn, landmark.nameKo) : pick('Selected Site', '선택 지점')}{' '}
+                  {pick('Greenhouse Cultivation Analysis', '온실 재배 분석')}
                 </h2>
                 <span className="text-xs font-mono text-slate-400">
                   {formatCoord(point.lat, point.lon)}
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-slate-800 text-slate-200 border border-white/10">
-                  {recipe.settlementRatingKo}
+                  {pick(recipe.settlementRatingEn, recipe.settlementRatingKo)}
                 </span>
               </div>
             </div>
@@ -88,7 +91,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-            aria-label="닫기"
+            aria-label={pick('Close', '닫기')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,7 +104,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3">
               <div className="text-[10px] text-slate-400 flex items-center gap-1">
                 <Droplets className="w-3 h-3 text-sky-400" />
-                지하수 확률
+                {pick('Water Prob.', '지하수 확률')}
               </div>
               <div className="text-lg font-mono font-bold text-sky-300 mt-1">
                 {point.combinedWaterProb}%
@@ -109,30 +112,38 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             </div>
 
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3">
-              <div className="text-[10px] text-slate-400">일일 추출량</div>
+              <div className="text-[10px] text-slate-400">{pick('Daily Yield', '일일 추출량')}</div>
               <div className="text-lg font-mono font-bold text-white mt-1">
                 {recipe.dailyWaterHarvestableL}
-                <span className="text-[10px] font-normal text-slate-400 ml-1">L/일</span>
+                <span className="text-[10px] font-normal text-slate-400 ml-1">
+                  {pick('L/day', 'L/일')}
+                </span>
               </div>
             </div>
 
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3">
-              <div className="text-[10px] text-slate-400">온실(40m²) 수요</div>
+              <div className="text-[10px] text-slate-400">
+                {pick('Dome Demand (40m²)', '온실(40m²) 수요')}
+              </div>
               <div className="text-lg font-mono font-bold text-white mt-1">
                 {recipe.dailyWaterRequirementL}
-                <span className="text-[10px] font-normal text-slate-400 ml-1">L/일</span>
+                <span className="text-[10px] font-normal text-slate-400 ml-1">
+                  {pick('L/day', 'L/일')}
+                </span>
               </div>
             </div>
 
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3">
-              <div className="text-[10px] text-slate-400">일일 수자원 여유</div>
+              <div className="text-[10px] text-slate-400">{pick('Daily Surplus', '일일 수자원 여유')}</div>
               <div
                 className={`text-lg font-mono font-bold mt-1 ${
                   recipe.waterSurplusL >= 0 ? 'text-emerald-400' : 'text-amber-400'
                 }`}
               >
                 {recipe.waterSurplusL >= 0 ? `+${recipe.waterSurplusL}` : recipe.waterSurplusL}
-                <span className="text-[10px] font-normal text-slate-400 ml-1">L/일</span>
+                <span className="text-[10px] font-normal text-slate-400 ml-1">
+                  {pick('L/day', 'L/일')}
+                </span>
               </div>
             </div>
           </div>
@@ -142,30 +153,32 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             {/* External Telemetry */}
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3.5">
               <div className="text-[11px] font-bold text-slate-200 mb-2.5 flex items-center justify-between">
-                <span>외부 현지 환경</span>
-                <span className="text-[10px] font-mono text-slate-400">실측/모델값</span>
+                <span>{pick('Ambient Conditions', '외부 현지 환경')}</span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {pick('Measured / Model', '실측/모델값')}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 font-mono text-[11px]">
                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
                   <span className="text-slate-400 flex items-center gap-1">
-                    <Gauge className="w-3 h-3 text-slate-400" /> 기압
+                    <Gauge className="w-3 h-3 text-slate-400" /> {pick('Pressure', '기압')}
                   </span>
                   <span className="text-white">{recipe.ambientPressureHpa} hPa</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
                   <span className="text-slate-400 flex items-center gap-1">
-                    <Thermometer className="w-3 h-3 text-slate-400" /> 기온
+                    <Thermometer className="w-3 h-3 text-slate-400" /> {pick('Temp', '기온')}
                   </span>
                   <span className="text-white">{recipe.ambientTempC}°C</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1">
-                    <Layers className="w-3 h-3 text-slate-400" /> 토양 점토
+                    <Layers className="w-3 h-3 text-slate-400" /> {pick('Soil Clay', '토양 점토')}
                   </span>
                   <span className="text-white">{point.soilFertility}/100</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">지형 경사</span>
+                  <span className="text-slate-400">{pick('Slope', '지형 경사')}</span>
                   <span className="text-white">{point.slopeDeg}°</span>
                 </div>
               </div>
@@ -174,24 +187,26 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             {/* Greenhouse Target Settings */}
             <div className="bg-[#111622] border border-white/10 rounded-lg p-3.5">
               <div className="text-[11px] font-bold text-slate-200 mb-2.5 flex items-center justify-between">
-                <span>온실 내부 유지 조건</span>
-                <span className="text-[10px] font-mono text-emerald-400">가압 비닐하우스</span>
+                <span>{pick('Greenhouse Targets', '온실 내부 유지 조건')}</span>
+                <span className="text-[10px] font-mono text-emerald-400">
+                  {pick('Pressurized Dome', '가압 비닐하우스')}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 font-mono text-[11px]">
                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
-                  <span className="text-slate-400">내부 기압</span>
+                  <span className="text-slate-400">{pick('Internal Pressure', '내부 기압')}</span>
                   <span className="text-slate-100">{recipe.domePressureAtm} atm</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
-                  <span className="text-slate-400">재배 온도</span>
+                  <span className="text-slate-400">{pick('Growth Temp', '재배 온도')}</span>
                   <span className="text-slate-100">{recipe.domeTempC}°C / 16°C</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">CO₂ 농도</span>
+                  <span className="text-slate-400">{pick('CO₂ Level', 'CO₂ 농도')}</span>
                   <span className="text-slate-100">{recipe.co2BoostPpm} ppm</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">산소(O₂)</span>
+                  <span className="text-slate-400">{pick('Oxygen (O₂)', '산소(O₂)')}</span>
                   <span className="text-slate-100">{recipe.o2Pct}%</span>
                 </div>
               </div>
@@ -203,14 +218,14 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1.5">
                 <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
-                토양·배지 처리 방식
+                {pick('Soil & Substrate Method', '토양·배지 처리 방식')}
               </span>
               <span className="text-[11px] font-semibold text-amber-300">
-                {recipe.soilMethodSummaryKo}
+                {pick(recipe.soilMethodSummaryEn, recipe.soilMethodSummaryKo)}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-              {recipe.soilRemediationStepsKo.map((step, idx) => (
+              {pick(recipe.soilRemediationStepsEn, recipe.soilRemediationStepsKo).map((step, idx) => (
                 <div
                   key={idx}
                   className="bg-black/35 border border-white/10 rounded px-2.5 py-2 text-[11px] text-slate-300 flex items-start gap-1.5"
@@ -226,14 +241,16 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white">
-                작물 선택 (누르면 상세 재배법 표시)
+                {pick('Select Crop (Click for cultivation guide)', '작물 선택 (누르면 상세 재배법 표시)')}
               </span>
               <button
                 type="button"
                 onClick={() => setShowAllCrops((v) => !v)}
                 className="text-[11px] text-sky-400 hover:text-sky-300 transition-colors"
               >
-                {showAllCrops ? '추천 TOP 3만 보기' : '전체 작물 6종 모두 보기'}
+                {showAllCrops
+                  ? pick('Show Top 3 Only', '추천 TOP 3만 보기')
+                  : pick('View All 6 Crops', '전체 작물 6종 모두 보기')}
               </button>
             </div>
 
@@ -244,6 +261,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                 const isRecommended = recipe.recommendedCrops.some(
                   (r) => r.id === crop.id
                 );
+                const cropName = pick(crop.nameEn, crop.nameKo);
                 return (
                   <button
                     key={crop.id}
@@ -256,22 +274,22 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-lg shrink-0" role="img" aria-label={crop.nameKo}>
+                      <span className="text-lg shrink-0" role="img" aria-label={cropName}>
                         {crop.iconName}
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
                           <span className="text-xs font-bold truncate">
-                            {crop.nameKo}
+                            {cropName}
                           </span>
                           {isRecommended && (
                             <span className="text-[9px] px-1 rounded bg-sky-500/20 text-sky-300 shrink-0">
-                              추천
+                              {pick('Recommended', '추천')}
                             </span>
                           )}
                         </div>
                         <div className="text-[10px] text-slate-400 truncate">
-                          {crop.growthDays}일 · {crop.dailyYieldKgPerM2}kg/m²
+                          {crop.growthDays}{pick('d', '일')} · {crop.dailyYieldKgPerM2}kg/m²
                         </div>
                       </div>
                     </div>
@@ -290,23 +308,27 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
               {/* Crop Header */}
               <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl" role="img" aria-label={selectedCrop.nameKo}>
+                  <span
+                    className="text-2xl"
+                    role="img"
+                    aria-label={pick(selectedCrop.nameEn, selectedCrop.nameKo)}
+                  >
                     {selectedCrop.iconName}
                   </span>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-bold text-white">
-                        {selectedCrop.nameKo}
+                        {pick(selectedCrop.nameEn, selectedCrop.nameKo)}
                       </h3>
                       <span className="text-[11px] font-mono text-slate-400 italic">
                         {selectedCrop.scientificName}
                       </span>
                       <span className="px-1.5 py-0.5 text-[10px] rounded bg-slate-800 text-sky-300 border border-white/10">
-                        {selectedCrop.categoryKo}
+                        {pick(selectedCrop.categoryEn, selectedCrop.categoryKo)}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300 mt-1">
-                      {selectedCrop.whySuitedKo}
+                      {pick(selectedCrop.whySuitedEn, selectedCrop.whySuitedKo)}
                     </p>
                   </div>
                 </div>
@@ -314,7 +336,9 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                   <div className="text-xs font-bold text-white">
                     {selectedCrop.caloriePer100g} kcal
                   </div>
-                  <div className="text-[10px] text-slate-400">100g 기준</div>
+                  <div className="text-[10px] text-slate-400">
+                    {pick('per 100g', '100g 기준')}
+                  </div>
                 </div>
               </div>
 
@@ -322,15 +346,15 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
                 <div className="bg-black/35 border border-white/10 rounded p-2">
                   <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> 생육 기간
+                    <Clock className="w-3 h-3" /> {pick('Growth Cycle', '생육 기간')}
                   </span>
                   <div className="font-mono font-bold text-white mt-0.5">
-                    {selectedCrop.growthDays}일
+                    {selectedCrop.growthDays} {pick('days', '일')}
                   </div>
                 </div>
                 <div className="bg-black/35 border border-white/10 rounded p-2">
                   <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Thermometer className="w-3 h-3" /> 적정 온도
+                    <Thermometer className="w-3 h-3" /> {pick('Optimal Temp', '적정 온도')}
                   </span>
                   <div className="font-mono font-bold text-white mt-0.5">
                     {selectedCrop.minTempC}~{selectedCrop.optTempC}°C
@@ -338,24 +362,25 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                 </div>
                 <div className="bg-black/35 border border-white/10 rounded p-2">
                   <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Droplets className="w-3 h-3" /> 물 소비량
+                    <Droplets className="w-3 h-3" /> {pick('Water Use', '물 소비량')}
                   </span>
                   <div className="font-mono font-bold text-sky-300 mt-0.5">
-                    {selectedCrop.waterConsumptionLPerM2Day} L/m²·일
+                    {selectedCrop.waterConsumptionLPerM2Day} {pick('L/m²·d', 'L/m²·일')}
                   </div>
                 </div>
                 <div className="bg-black/35 border border-white/10 rounded p-2">
                   <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Sun className="w-3 h-3" /> LED 일조
+                    <Sun className="w-3 h-3" /> {pick('LED Light', 'LED 일조')}
                   </span>
                   <div className="font-mono font-bold text-amber-300 mt-0.5">
-                    일 {selectedCrop.lightHoursDay}시간
+                    {pick(`${selectedCrop.lightHoursDay}h/day`, `일 ${selectedCrop.lightHoursDay}시간`)}
                   </div>
                 </div>
                 <div className="bg-black/35 border border-white/10 rounded p-2">
-                  <span className="text-[10px] text-slate-400">습도 / pH</span>
+                  <span className="text-[10px] text-slate-400">{pick('Humidity / pH', '습도 / pH')}</span>
                   <div className="font-mono font-bold text-white mt-0.5 truncate">
-                    {selectedCrop.optimalHumidityPct} · {selectedCrop.phRange.replace('pH ', '')}
+                    {pick(selectedCrop.optimalHumidityPctEn, selectedCrop.optimalHumidityPct)} ·{' '}
+                    {selectedCrop.phRange.replace('pH ', '')}
                   </div>
                 </div>
               </div>
@@ -363,34 +388,44 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
               {/* Substrate & Nutrients */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                 <div className="bg-black/35 border border-white/10 rounded p-2.5">
-                  <span className="text-[10px] text-slate-400 block">권장 토양 · 배지</span>
-                  <span className="text-slate-100 font-medium">{selectedCrop.soilMethodKo}</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {pick('Recommended Substrate', '권장 토양 · 배지')}
+                  </span>
+                  <span className="text-slate-100 font-medium">
+                    {pick(selectedCrop.soilMethodEn, selectedCrop.soilMethodKo)}
+                  </span>
                 </div>
                 <div className="bg-black/35 border border-white/10 rounded p-2.5">
-                  <span className="text-[10px] text-slate-400 block">필수 양분 · 비료 처방</span>
-                  <span className="text-slate-100 font-medium">{selectedCrop.nutrientsKo}</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {pick('Nutrient Formula', '필수 양분 · 비료 처방')}
+                  </span>
+                  <span className="text-slate-100 font-medium">
+                    {pick(selectedCrop.nutrientsEn, selectedCrop.nutrientsKo)}
+                  </span>
                 </div>
               </div>
 
               {/* 4-Stage Step-by-Step Guide */}
               <div>
                 <div className="text-[11px] font-bold text-slate-200 mb-1.5">
-                  단계별 온실 재배 절차
+                  {pick('4-Stage Greenhouse Protocol', '단계별 온실 재배 절차')}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {selectedCrop.cultivationStepsKo.map((step, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-black/30 border border-white/10 rounded p-2.5 space-y-0.5"
-                    >
-                      <div className="text-[11px] font-bold text-sky-300">
-                        {step.stage}
+                  {pick(selectedCrop.cultivationStepsEn, selectedCrop.cultivationStepsKo).map(
+                    (step, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-black/30 border border-white/10 rounded p-2.5 space-y-0.5"
+                      >
+                        <div className="text-[11px] font-bold text-sky-300">
+                          {step.stage}
+                        </div>
+                        <div className="text-[11px] text-slate-300 leading-snug">
+                          {step.detail}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-300 leading-snug">
-                        {step.detail}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </div>
 
@@ -398,8 +433,10 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
               <div className="bg-slate-900/90 border border-white/10 rounded-lg px-3 py-2 flex items-start gap-2 text-[11px] text-slate-300">
                 <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-amber-300 font-semibold">재배 핵심 팁: </strong>
-                  {selectedCrop.harvestTipKo}
+                  <strong className="text-amber-300 font-semibold">
+                    {pick('Pro Tip: ', '재배 핵심 팁: ')}
+                  </strong>
+                  {pick(selectedCrop.harvestTipEn, selectedCrop.harvestTipKo)}
                 </span>
               </div>
             </div>
@@ -423,7 +460,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                 className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-sky-300 border border-white/15 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Droplets className="w-3.5 h-3.5" />
-                수자원 시추지(출발)
+                {pick('Water Source (Start)', '수자원 시추지(출발)')}
               </button>
             )}
 
@@ -437,7 +474,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                 className="px-3 py-1.5 text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Sprout className="w-3.5 h-3.5" />
-                온실 농경지(도착)
+                {pick('Greenhouse Site (Target)', '온실 농경지(도착)')}
               </button>
             )}
 
@@ -449,7 +486,7 @@ export const MarsFarmModal: React.FC<MarsFarmModalProps> = ({
                   onClose();
                 }}
                 className="p-1.5 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-white/15 rounded-lg transition-colors"
-                title="3D 지형 보기"
+                title={pick('View 3D Terrain', '3D 지형 보기')}
               >
                 <Box className="w-4 h-4" />
               </button>

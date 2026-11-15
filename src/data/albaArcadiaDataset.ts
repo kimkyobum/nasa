@@ -11,6 +11,7 @@ export interface AlbaObstacle {
   hazardLevel: 'CRITICAL' | 'HIGH' | 'MODERATE';
   routingPenalty: number; // Infinity for CRITICAL
   description: string;
+  descriptionEn: string;
 }
 
 export interface AlbaIceSolarSample {
@@ -30,12 +31,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Alba Mons North Fissure Zone',
     type: 'volcano',
     rawCategory: '화산 지열·가스 분출지',
+    rawCategoryEn: 'Volcanic Geothermal & Gas Vent',
     lat: 41.25,
     lon: -110.2,
     elevationM: 4120,
     tier: 2,
     descriptionKo: '계절성 염화수소(HCl 3.8 ppb) 방출 및 +4.2K 열적 이상 관측 지점.',
+    descriptionEn: 'Observed seasonal hydrogen chloride (HCl 3.8 ppb) emissions and +4.2K thermal anomaly.',
     waterNoteKo: '지하 추정 온도 -12.5°C로 지하 열수 및 얼음 융해 가능성 최상(정착 점수 91).',
+    waterNoteEn: 'Estimated subsurface temp -12.5°C with premier hydrothermal & ice-melt potential (Settlement Score 91).',
   },
   {
     id: 'geo_002',
@@ -44,12 +48,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Alba Fossae East Graben',
     type: 'canyon',
     rawCategory: '단층 지구대·용암 튜브',
+    rawCategoryEn: 'Fault Graben & Lava Tube',
     lat: 39.8,
     lon: -108.9,
     elevationM: 3450,
     tier: 2,
     descriptionKo: '단층 균열 지대로 지열 추출 및 지하 용암 튜브 방사선 차폐 활용 유리.',
+    descriptionEn: 'Fault fissure zone favorable for geothermal extraction and underground lava-tube radiation shielding.',
     waterNoteKo: '열적 이상 +2.1K, 지하 얼음 융해수 추출 잠재력 양호(정착 점수 78).',
+    waterNoteEn: 'Thermal anomaly +2.1K with solid subsurface meltwater extraction potential (Settlement Score 78).',
   },
   {
     id: 'geo_003',
@@ -58,12 +65,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Ceraunius Fossae Northern Ridge',
     type: 'agri_candidate',
     rawCategory: '완만 화산 능선',
+    rawCategoryEn: 'Gentle Volcanic Ridge',
     lat: 38.4,
     lon: -111.1,
     elevationM: 2890,
     tier: 3,
     descriptionKo: '완만한 경사도와 안정적 기반암을 갖춘 탐사 착륙 및 물류 적합 지형.',
+    descriptionEn: 'Terrain with gentle slopes and stable bedrock suited for exploration landing and logistics.',
     waterNoteKo: '지하 온도 -35.2°C, 사면 안정성 우수(정착 점수 65).',
+    waterNoteEn: 'Subsurface temp -35.2°C with high slope stability (Settlement Score 65).',
   },
   {
     id: 'geo_004',
@@ -72,12 +82,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Alba Caldera Rim South',
     type: 'volcano',
     rawCategory: '칼데라 능선',
+    rawCategoryEn: 'Caldera Rim',
     lat: 40.45,
     lon: -110.05,
     elevationM: 6420,
     tier: 2,
     descriptionKo: '고도 6,420m의 휴화산 칼데라 외벽. 지열(+3.5K)이 높으나 접근 경사 가파름.',
+    descriptionEn: 'Outer rim of a dormant caldera at 6,420m elevation. High geothermal heat (+3.5K) but steep approach slopes.',
     waterNoteKo: 'HCl 2.9 ppb 관측, 고지대 저기압 주의(정착 점수 72).',
+    waterNoteEn: 'HCl 2.9 ppb detected; watch for low atmospheric pressure at high elevation (Settlement Score 72).',
   },
   {
     id: 'geo_005',
@@ -86,12 +99,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Arcadia-Alba Thermal Basin',
     type: 'ice_sheet',
     rawCategory: '빙하·잔류 열원 교차지',
+    rawCategoryEn: 'Glacial & Residual Heat Junction',
     lat: 42.3,
     lon: -111.8,
     elevationM: 2150,
     tier: 2,
     descriptionKo: '얕은 지하 빙하층과 화산 잔류 열원이 만나는 대규모 수자원 채굴 최적지.',
+    descriptionEn: 'Optimal large-scale water-mining site where shallow subsurface glaciers meet residual volcanic heat.',
     waterNoteKo: '심도 0.2~0.3m 내 70%대 고순도 지하 얼음 매장 + 잔류 지열(정착 점수 89).',
+    waterNoteEn: 'High-purity (>70%) subsurface ice at 0.2–0.3m depth plus residual geothermal heat (Settlement Score 89).',
   },
   {
     id: 'geo_006',
@@ -100,12 +116,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Tantalus North Vent',
     type: 'volcano',
     rawCategory: '열수 분출 후보지',
+    rawCategoryEn: 'Hydrothermal Vent Candidate',
     lat: 41.8,
     lon: -108.1,
     elevationM: 3780,
     tier: 2,
     descriptionKo: '과거 열수 분출 흔적(규산염 퇴적물) 다수 분포. 외계 미생물 흔적 탐사 구역.',
+    descriptionEn: 'Abundant past hydrothermal vent deposits (silicates). Key zone for astrobiology & biosignature surveys.',
     waterNoteKo: 'HCl 3.1 ppb · 열적 이상 +3.8K(정착 점수 84).',
+    waterNoteEn: 'HCl 3.1 ppb · Thermal anomaly +3.8K (Settlement Score 84).',
   },
   {
     id: 'geo_007',
@@ -114,12 +133,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Uranius North Outflow Channel',
     type: 'agri_candidate',
     rawCategory: '평탄 용암·수로 지형',
+    rawCategoryEn: 'Flat Lava & Outflow Terrain',
     lat: 37.5,
     lon: -109.6,
     elevationM: 2410,
     tier: 3,
     descriptionKo: '일조량(422 W/m²)이 풍부하고 평탄해 태양광·농업 부지로 적합.',
+    descriptionEn: 'Flat terrain with abundant solar irradiance (422 W/m²), ideal for solar power and agricultural domes.',
     waterNoteKo: '지하 1.8m 깊이 약 22 wt% 수분 얼음층 분포(정착 점수 68).',
+    waterNoteEn: 'Approx. 22 wt% water-ice layer at 1.8m depth (Settlement Score 68).',
   },
   {
     id: 'geo_008',
@@ -128,12 +150,15 @@ export const ALBA_GEOTHERMAL_LANDMARKS: Landmark[] = [
     nameEn: 'Western Alba Lava Tube Complex',
     type: 'canyon',
     rawCategory: '지하 용암 동굴',
+    rawCategoryEn: 'Subsurface Lava Cave',
     lat: 40.1,
     lon: -112.4,
     elevationM: 3120,
     tier: 2,
     descriptionKo: '붕괴 천장(Skylight) 확인 구역으로 방사선 및 모래폭풍 차폐 우수.',
+    descriptionEn: 'Confirmed skylight collapse zone offering excellent protection against radiation and dust storms.',
     waterNoteKo: '열적 이상 +1.6K, 지하 얼음 심도 약 0.9m(정착 점수 82).',
+    waterNoteEn: 'Thermal anomaly +1.6K, subsurface ice depth approx. 0.9m (Settlement Score 82).',
   },
 ];
 
@@ -150,6 +175,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'CRITICAL',
     routingPenalty: Infinity,
     description: '알바 몬스 정상부 거대 칼데라 함몰지. 수직 단애로 횡단 불가.',
+    descriptionEn: 'Giant summit caldera depression of Alba Mons. Impassable due to vertical scarps.',
   },
   {
     id: 'OBS-02',
@@ -162,6 +188,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'CRITICAL',
     routingPenalty: Infinity,
     description: '깊이 450m 이상의 수직 협곡 단층대.',
+    descriptionEn: 'Vertical fault canyon system exceeding 450m in depth.',
   },
   {
     id: 'OBS-03',
@@ -174,6 +201,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'CRITICAL',
     routingPenalty: Infinity,
     description: '직경 17km 급경사 충돌 크레이터.',
+    descriptionEn: 'Steep-walled 17 km diameter impact crater.',
   },
   {
     id: 'OBS-04',
@@ -186,6 +214,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'HIGH',
     routingPenalty: 4.5,
     description: '미세 먼지 퇴적 분지(바퀴 빠짐 위험).',
+    descriptionEn: 'Fine dust accumulation basin (high rover wheel-sinkage risk).',
   },
   {
     id: 'OBS-05',
@@ -198,6 +227,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'MODERATE',
     routingPenalty: 2.2,
     description: '고밀도 현무암 암석 지대.',
+    descriptionEn: 'High-density basalt boulder field.',
   },
   {
     id: 'OBS-06',
@@ -210,6 +240,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'CRITICAL',
     routingPenalty: Infinity,
     description: '급경사 단층 절벽.',
+    descriptionEn: 'Steep tectonic fault scarp.',
   },
   {
     id: 'OBS-07',
@@ -222,6 +253,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'HIGH',
     routingPenalty: 3.0,
     description: '계절풍 집중 통로.',
+    descriptionEn: 'Seasonal high-wind & dust storm corridor.',
   },
   {
     id: 'OBS-08',
@@ -234,6 +266,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'CRITICAL',
     routingPenalty: Infinity,
     description: '지하 얼음 승화 싱크홀 군집 지대.',
+    descriptionEn: 'Cluster of subsurface ice sublimation collapse sinkholes.',
   },
   {
     id: 'OBS-09',
@@ -246,6 +279,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'MODERATE',
     routingPenalty: 2.0,
     description: '거친 아아(Aa) 용암류 선단부.',
+    descriptionEn: 'Rough aa lava flow front.',
   },
   {
     id: 'OBS-10',
@@ -258,6 +292,7 @@ export const ALBA_HAZARD_OBSTACLES: AlbaObstacle[] = [
     hazardLevel: 'HIGH',
     routingPenalty: 5.0,
     description: '소형 운석구 밀집 지역.',
+    descriptionEn: 'Dense cluster of secondary impact craters.',
   },
 ];
 

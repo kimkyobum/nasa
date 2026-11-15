@@ -9,6 +9,7 @@ import {
   RotateCw,
   X,
 } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 import { Landmark, MarsTelemetryPoint, RouteResult } from '../types/mars';
 import {
   CameraViewMode,
@@ -82,6 +83,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
   startCoord,
   destCoord,
 }) => {
+  const { language, setLanguage, pick } = useLanguage();
   const [layout, setLayout] = useState<PreviewLayout>('split');
   const [reliefScale, setReliefScale] = useState<number>(2);
   const [showArGrid, setShowArGrid] = useState<boolean>(true);
@@ -112,11 +114,11 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
 
   return (
     <div className="h-full flex flex-col gap-3 text-slate-100 select-none">
-      {/* Region Header + Window Size Controls (기본 / 넓게 / 전체화면) */}
+      {/* Region Header + Window Size Controls */}
       <div className="flex items-center justify-between gap-2 shrink-0 flex-wrap">
         <div className="min-w-0">
           <h2 className="text-[15px] font-bold text-white leading-tight truncate">
-            {landmark ? landmark.nameKo : '선택 지점'}
+            {landmark ? pick(landmark.nameEn, landmark.nameKo) : pick('Selected Site', '선택 지점')}
           </h2>
           <div className="text-[11px] font-mono text-slate-300/85 mt-0.5 truncate">
             {glideInfo
@@ -131,45 +133,75 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
               <button
                 type="button"
                 onClick={() => onSetDrawerWidth(384)}
-                title="기본 창 폭 (384px)"
+                title={pick('Default panel width (384px)', '기본 창 폭 (384px)')}
                 className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                   drawerWidthPx <= 430
                     ? 'bg-sky-500/25 border-sky-400/60 text-sky-100 font-semibold'
                     : 'bg-white/[0.06] border-white/15 text-slate-300 hover:text-white'
                 }`}
               >
-                기본
+                {pick('Default', '기본')}
               </button>
               <button
                 type="button"
                 onClick={() => onSetDrawerWidth(560)}
-                title="넓은 창 (560px)"
+                title={pick('Wide panel (560px)', '넓은 창 (560px)')}
                 className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                   drawerWidthPx > 430
                     ? 'bg-sky-500/25 border-sky-400/60 text-sky-100 font-semibold'
                     : 'bg-white/[0.06] border-white/15 text-slate-300 hover:text-white'
                 }`}
               >
-                넓게
+                {pick('Wide', '넓게')}
               </button>
             </>
           )}
 
           {fullscreen3D ? (
-            <button
-              type="button"
-              onClick={handleExitFullscreen}
-              title="창 크기로 복원 (ESC)"
-              className="px-2.5 py-1 text-[11px] font-semibold text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-lg flex items-center gap-1 transition-colors"
-            >
-              <Minimize2 className="w-3.5 h-3.5" />
-              <span>창 복원</span>
-            </button>
+            <>
+              <div
+                role="group"
+                aria-label={pick('Language selector', '언어 선택')}
+                className="flex items-center bg-slate-950/90 border border-white/20 rounded-lg p-0.5 mr-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={`px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors ${
+                    language === 'en'
+                      ? 'bg-sky-500 text-slate-950'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('ko')}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    language === 'ko'
+                      ? 'bg-sky-500 text-slate-950'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  한국어
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleExitFullscreen}
+                title={pick('Restore panel size (ESC)', '창 크기로 복원 (ESC)')}
+                className="px-2.5 py-1 text-[11px] font-semibold text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-lg flex items-center gap-1 transition-colors"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>{pick('Restore', '창 복원')}</span>
+              </button>
+            </>
           ) : (
             <button
               type="button"
               onClick={handleExpand3DFullscreen}
-              title="3D 전체화면으로 보기"
+              title={pick('Fullscreen 3D view', '3D 전체화면으로 보기')}
               className="p-1.5 text-slate-200 hover:text-white bg-white/[0.08] hover:bg-white/20 border border-white/20 rounded-lg transition-colors"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -193,7 +225,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
             />
             <div className="absolute top-2 left-2">
               <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-950/85 text-white border border-white/15">
-                확대 사진
+                {pick('Zoomed Photo', '확대 사진')}
               </span>
             </div>
             <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
@@ -206,7 +238,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                     : 'bg-slate-950/85 text-slate-200 border-white/20 hover:bg-slate-800'
                 }`}
               >
-                고도색
+                {pick('Elev Tint', '고도색')}
               </button>
               <button
                 type="button"
@@ -215,7 +247,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                 }
                 className="px-2 py-0.5 text-[10px] rounded bg-slate-950/85 text-slate-200 border border-white/20 hover:bg-slate-800"
               >
-                {layout === 'photo2d' ? '둘 다 보기' : '크게'}
+                {layout === 'photo2d' ? pick('Split View', '둘 다 보기') : pick('Expand', '크게')}
               </button>
             </div>
           </div>
@@ -248,11 +280,13 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-950/88 text-cyan-200 border border-cyan-400/45 flex items-center gap-1">
                 <Box className="w-3 h-3 text-cyan-300" />
-                {cameraViewMode === 'roadview' ? '3D 경로 로드뷰' : '3D AR 지형'}
+                {cameraViewMode === 'roadview'
+                  ? pick('3D Route Roadview', '3D 경로 로드뷰')
+                  : pick('3D AR Terrain', '3D AR 지형')}
               </span>
               {hasRoute && routeInfo?.inPatch && (
                 <span className="px-2 py-0.5 text-[10px] rounded bg-slate-950/85 text-sky-200 border border-sky-400/35">
-                  경로 클릭 시 부드러운 이동
+                  {pick('Click route to glide', '경로 클릭 시 부드러운 이동')}
                 </span>
               )}
             </div>
@@ -265,7 +299,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                   className="px-2 py-0.5 text-[10px] font-semibold rounded bg-sky-500/90 hover:bg-sky-400 text-slate-950 flex items-center gap-1 shadow"
                 >
                   <Navigation className="w-3 h-3" />
-                  경로 위치로 이동
+                  {pick('Jump to Route', '경로 위치로 이동')}
                 </button>
               )}
               {glideInfo?.nearEdge && onJumpToCoord && (
@@ -274,7 +308,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                   onClick={() => onJumpToCoord(glideInfo.lat, glideInfo.lon)}
                   className="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-400/90 hover:bg-amber-300 text-slate-950 shadow"
                 >
-                  다음 구간 이어보기
+                  {pick('Continue Next Segment', '다음 구간 이어보기')}
                 </button>
               )}
             </div>
@@ -301,11 +335,15 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                     }`}
                   >
                     <Navigation className="w-3 h-3" />
-                    <span>{cameraViewMode === 'roadview' ? '로드뷰 주행중' : '로드뷰 주행'}</span>
+                    <span>
+                      {cameraViewMode === 'roadview'
+                        ? pick('Roadview On', '로드뷰 주행중')
+                        : pick('Drive Roadview', '로드뷰 주행')}
+                    </span>
                   </button>
                 )}
                 <span className="px-2 py-0.5 text-[10px] rounded bg-slate-950/85 text-slate-200 border border-white/15">
-                  드래그 회전
+                  {pick('Drag to Orbit', '드래그 회전')}
                 </span>
               </div>
               <button
@@ -313,7 +351,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                 onClick={handleExpand3DFullscreen}
                 className="pointer-events-auto px-2.5 py-0.5 text-[10px] font-semibold rounded bg-cyan-500/90 text-slate-950 hover:bg-cyan-400 shadow"
               >
-                3D 확대
+                {pick('Expand 3D', '3D 확대')}
               </button>
             </div>
           ) : (
@@ -339,7 +377,9 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                       }`}
                     >
                       <Compass className="w-3 h-3" />
-                      {cameraViewMode === 'roadview' ? '로드뷰 ON' : '로드뷰'}
+                      {cameraViewMode === 'roadview'
+                        ? pick('Roadview ON', '로드뷰 ON')
+                        : pick('Roadview', '로드뷰')}
                     </button>
                     <span className="w-px h-3.5 bg-white/15 mx-0.5" />
                   </>
@@ -355,7 +395,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                   }`}
                 >
                   <Grid className="w-3 h-3" />
-                  격자
+                  {pick('Grid', '격자')}
                 </button>
                 <button
                   type="button"
@@ -367,10 +407,12 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                   }`}
                 >
                   <RotateCw className="w-3 h-3" />
-                  회전
+                  {pick('Spin', '회전')}
                 </button>
                 <span className="w-px h-3.5 bg-white/15 mx-0.5" />
-                <span className="text-[10px] text-slate-400 px-0.5">기복</span>
+                <span className="text-[10px] text-slate-400 px-0.5">
+                  {pick('Relief', '기복')}
+                </span>
                 {[1, 2, 3].map((val) => (
                   <button
                     key={val}
@@ -397,7 +439,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                   }}
                   className="px-2.5 py-1 text-[10px] font-medium rounded-lg bg-slate-950/92 border border-white/25 text-slate-100 hover:bg-slate-800"
                 >
-                  둘 다 보기
+                  {pick('Split View', '둘 다 보기')}
                 </button>
                 {fullscreen3D && (
                   <button
@@ -406,7 +448,7 @@ export const MarsRegionSidePanel: React.FC<MarsRegionSidePanelProps> = ({
                     className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-slate-950/92 border border-white/25 text-white hover:bg-slate-800 flex items-center gap-1"
                   >
                     <X className="w-3 h-3" />
-                    전체화면 닫기
+                    {pick('Exit Fullscreen', '전체화면 닫기')}
                   </button>
                 )}
               </div>

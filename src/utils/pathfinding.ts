@@ -92,6 +92,11 @@ function bearingToKorean(deg: number): string {
   return dirs[Math.round(deg / 45) % 8];
 }
 
+function bearingToEnglish(deg: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
 // Convert MOLA Color Shaded Relief RGB into approximate physical elevation (m)
 function molaRgbToElevationM(r: number, g: number, b: number, fallback: number): number {
   const max = Math.max(r, g, b);
@@ -353,7 +358,7 @@ function runWeightedAStar(
   let start = toGrid(sLat, sLon);
   const dest = toGrid(dLat, dLon);
 
-  const unreachableResult = (reasonKo: string): RouteResult => ({
+  const unreachableResult = (reasonKo: string, reasonEn: string): RouteResult => ({
     found: false,
     mode,
     terrainSource: fromTiles ? 'nasa_tiles' : 'model',
@@ -368,11 +373,13 @@ function runWeightedAStar(
     hazardSegmentsCount: 0,
     safetyScore: 0,
     summaryKo: reasonKo,
+    summaryEn: reasonEn,
   });
 
   if (directDist > 8500) {
     return unreachableResult(
-      `단일 로버 탐사 한계 거리(8,500 km)를 초과해 이동이 불가능합니다. (직선 ${directDist.toFixed(0)} km)`
+      `단일 로버 탐사 한계 거리(8,500 km)를 초과해 이동이 불가능합니다. (직선 ${directDist.toFixed(0)} km)`,
+      `Exceeds single-rover expedition range limit (8,500 km). Direct distance: ${directDist.toFixed(0)} km.`
     );
   }
 
@@ -408,7 +415,8 @@ function runWeightedAStar(
     }
     if (bestR === -1) {
       return unreachableResult(
-        `출발 지점이 급경사 절벽·고산 지형(경사 ${startCell.slopeDeg}° / 고도 ${startCell.elevationM.toLocaleString()}m)으로 출발할 수 없습니다.`
+        `출발 지점이 급경사 절벽·고산 지형(경사 ${startCell.slopeDeg}° / 고도 ${startCell.elevationM.toLocaleString()}m)으로 출발할 수 없습니다.`,
+        `Start point sits on impassable cliffs or extreme terrain (Slope ${startCell.slopeDeg}° / Elev ${startCell.elevationM.toLocaleString()}m).`
       );
     }
     start = { row: bestR, col: bestC };
@@ -618,7 +626,8 @@ function runWeightedAStar(
 
     if (trappedNearStart) {
       return unreachableResult(
-        '협곡·단층 절벽 또는 분화구 외벽으로 완전히 가로막혀 접근 가능한 우회 경로가 존재하지 않습니다.'
+        '협곡·단층 절벽 또는 분화구 외벽으로 완전히 가로막혀 접근 가능한 우회 경로가 존재하지 않습니다.',
+        'Completely blocked by canyon walls, fault scarps, or crater rims with no safe detour available.'
       );
     }
 
@@ -738,7 +747,8 @@ function runWeightedAStar(
     (mode !== 'fast' && hazards / Math.max(1, points.length) > 0.42)
   ) {
     return unreachableResult(
-      `경로 상 위험 급경사 구간(최대 ${maxSlope.toFixed(1)}°)이 과도해 안전한 이동이 불가능합니다.`
+      `경로 상 위험 급경사 구간(최대 ${maxSlope.toFixed(1)}°)이 과도해 안전한 이동이 불가능합니다.`,
+      `Excessive steep-slope hazard along route (Max ${maxSlope.toFixed(1)}°); safe traversal is not possible.`
     );
   }
 
@@ -761,10 +771,12 @@ function runWeightedAStar(
       segmentDistanceKm: 0,
       bearingDeg: nextB,
       directionKo: bearingToKorean(nextB),
+      directionEn: bearingToEnglish(nextB),
       elevationM: first.elevationM,
       slopeDeg: first.slopeDeg,
       waterProb: first.waterProb,
       instructionKo: `출발 · ${bearingToKorean(nextB)}(${nextB}°)`,
+      instructionEn: `Depart · ${bearingToEnglish(nextB)} (${nextB}°)`,
       tag: 'start',
     });
 
@@ -803,11 +815,17 @@ function runWeightedAStar(
             ? 'water'
             : 'checkpoint';
         const dirKo = bearingToKorean(bAfter);
+        const dirEn = bearingToEnglish(bAfter);
         const instructionKo = isTurn
           ? `우회 · ${dirKo}(${bAfter}°)`
           : isWaterPeak
             ? `지하수(${points[i].waterProb}%) · ${dirKo}(${bAfter}°)`
             : `직진 · ${dirKo}(${bAfter}°)`;
+        const instructionEn = isTurn
+          ? `Detour · ${dirEn} (${bAfter}°)`
+          : isWaterPeak
+            ? `Water (${points[i].waterProb}%) · ${dirEn} (${bAfter}°)`
+            : `Proceed · ${dirEn} (${bAfter}°)`;
 
         waypoints.push({
           index: waypoints.length + 1,
@@ -818,10 +836,12 @@ function runWeightedAStar(
           segmentDistanceKm: segKm,
           bearingDeg: bAfter,
           directionKo: dirKo,
+          directionEn: dirEn,
           elevationM: points[i].elevationM,
           slopeDeg: points[i].slopeDeg,
           waterProb: points[i].waterProb,
           instructionKo,
+          instructionEn,
           tag,
         });
         lastWpIdx = i;
@@ -849,10 +869,12 @@ function runWeightedAStar(
       segmentDistanceKm: finalSeg,
       bearingDeg: finalB,
       directionKo: bearingToKorean(finalB),
+      directionEn: bearingToEnglish(finalB),
       elevationM: last.elevationM,
       slopeDeg: last.slopeDeg,
       waterProb: last.waterProb,
       instructionKo: snappedToSafeApproach ? '안전 접근점 도착' : '목적지 도착',
+      instructionEn: snappedToSafeApproach ? 'Arrive Safe Approach' : 'Arrive at Target',
       tag: 'target',
     });
   }
@@ -879,9 +901,20 @@ function runWeightedAStar(
         ? '최단 신속'
         : '수자원 경유';
 
+  const modeLabelEn =
+    mode === 'safe'
+      ? 'Safest'
+      : mode === 'fast'
+        ? 'Fastest'
+        : 'Water-Rich';
+
   const summaryKo = snappedToSafeApproach
     ? `목적지 인근 험지 우회 → 가장 가까운 안전 지점(${bestApproachDistKm.toFixed(1)}km 앞) 지정`
     : `${modeLabel} · ${accumKm.toFixed(1)} km · 로버 ${estimatedHoursRover}h`;
+
+  const summaryEn = snappedToSafeApproach
+    ? `Bypassed impassable terrain near target → snapped to closest safe point (${bestApproachDistKm.toFixed(1)} km away)`
+    : `${modeLabelEn} · ${accumKm.toFixed(1)} km · Rover ${estimatedHoursRover}h`;
 
   return {
     found: true,
@@ -900,6 +933,7 @@ function runWeightedAStar(
     hazardSegmentsCount: hazards,
     safetyScore,
     summaryKo,
+    summaryEn,
   };
 }
 
@@ -941,10 +975,12 @@ export async function findMarsRouteFromNasaTiles(
           segmentDistanceKm: 0,
           bearingDeg: 0,
           directionKo: '북',
+          directionEn: 'N',
           elevationM: pt.elevationM,
           slopeDeg: pt.slopeDeg,
           waterProb: pt.combinedWaterProb,
           instructionKo: '출발지와 목적지가 동일 지점입니다.',
+          instructionEn: 'Start and target are at the same location.',
           tag: 'target',
         },
       ],
@@ -957,6 +993,7 @@ export async function findMarsRouteFromNasaTiles(
       hazardSegmentsCount: 0,
       safetyScore: 99,
       summaryKo: '출발지와 목적지가 동일 지점입니다.',
+      summaryEn: 'Start and target are at the same location.',
     };
   }
 
