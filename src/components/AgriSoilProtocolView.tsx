@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Droplets, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Droplets, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { MarsTelemetryPoint } from '../types/mars';
 
@@ -93,15 +93,16 @@ export const AgriSoilProtocolView: React.FC<AgriSoilProtocolViewProps> = ({
       : Number((greenhouseAreaM2 * 0.048 * (waterProb / 80)).toFixed(1));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-6 space-y-5 text-xs">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
+    <div className="space-y-4 text-xs min-w-0">
+      {/* Header + Sync Action */}
+      <div className="border-b border-white/10 pb-3 space-y-2.5">
         <div>
-          <span className="font-mono text-[10px] text-emerald-400 tracking-wider uppercase">
+          <span className="font-mono text-[10px] text-emerald-400 tracking-wider uppercase block">
             HYDRO-AGRI PROTOCOL
           </span>
-          <h1 className="text-xl font-bold text-white tracking-tight mt-0.5">
+          <h1 className="text-base font-bold text-white tracking-tight mt-0.5 leading-snug">
             {pick(
-              'Martian Settlement Farming Viability & Water Balance',
+              'Martian Settlement Farming & Water Balance',
               '화성 정착지 농업 적합성 & 지하수 수지'
             )}
           </h1>
@@ -111,213 +112,238 @@ export const AgriSoilProtocolView: React.FC<AgriSoilProtocolViewProps> = ({
           <button
             type="button"
             onClick={syncFromMap}
-            className="px-3.5 py-1.5 text-xs bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/25 transition-colors whitespace-nowrap"
+            className="w-full px-3 py-2 text-xs font-medium bg-cyan-500/15 text-cyan-200 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/25 transition-colors flex items-center justify-center gap-1.5"
           >
-            {pick('Sync Selected Site', '선택 좌표 동기화')} (
-            {pick(regionNameEn ?? regionNameKo, regionNameKo)})
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">
+              {pick('Sync Selected Site', '선택 좌표 동기화')} (
+              {pick(regionNameEn ?? regionNameKo, regionNameKo)})
+            </span>
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left: Sliders */}
-        <div className="lg:col-span-5 bg-[#070c16] border border-white/15 rounded-xl p-4 space-y-4">
-          <h2 className="text-xs font-bold text-white">
-            {pick('Environment Variables', '환경 변수')}
-          </h2>
-
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-slate-300">
-                  {pick('Water Probability', '지하수 확률')}
-                </span>
-                <span className="font-mono text-cyan-300 font-bold">{waterProb}%</span>
-              </div>
-              <input
-                type="range"
-                min={5}
-                max={96}
-                value={waterProb}
-                onChange={(e) => setWaterProb(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
+      {/* Optimal Farming Protocol Verdict */}
+      <div
+        className={`border rounded-xl p-3.5 ${
+          decisionMode === 'direct'
+            ? 'bg-emerald-950/25 border-emerald-500/40'
+            : decisionMode === 'earth_hydro'
+              ? 'bg-cyan-950/25 border-cyan-500/40'
+              : 'bg-rose-950/25 border-rose-500/40'
+        }`}
+      >
+        <div className="flex items-start gap-2.5">
+          {decisionMode === 'direct' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          ) : decisionMode === 'earth_hydro' ? (
+            <Droplets className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          )}
+          <div className="min-w-0">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              {pick('Optimal Farming Protocol', '최적 농법 판정')}
             </div>
+            <h3 className="text-sm font-bold text-white mt-0.5 leading-snug">
+              {decisionTitle}
+            </h3>
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">{decisionDesc}</p>
+          </div>
+        </div>
+      </div>
 
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-slate-300">
-                  {pick('Soil Fertility / Clay', '토양 비옥도 / 점토')}
-                </span>
-                <span className="font-mono text-emerald-300 font-bold">{soilFertility}/100</span>
-              </div>
-              <input
-                type="range"
-                min={5}
-                max={95}
-                value={soilFertility}
-                onChange={(e) => setSoilFertility(Number(e.target.value))}
-                className="w-full accent-emerald-400 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-slate-300">
-                  {pick('Terrain Slope', '경사도')}
-                </span>
-                <span className="font-mono text-amber-300 font-bold">{slopeDeg.toFixed(1)}°</span>
-              </div>
-              <input
-                type="range"
-                min={0.5}
-                max={25}
-                value={slopeDeg}
-                onChange={(e) => setSlopeDeg(Number(e.target.value))}
-                className="w-full accent-amber-400 cursor-pointer"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-              <div>
-                <span className="text-[10px] text-slate-400 block mb-1">
-                  {pick('Crew Size', '대원수')}
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={crewCount}
-                  onChange={(e) => setCrewCount(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-[#030508] border border-white/20 rounded px-2.5 py-1 text-xs font-mono text-white"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block mb-1">
-                  {pick('Mission Days', '임무일수')}
-                </span>
-                <input
-                  type="number"
-                  min={30}
-                  max={900}
-                  step={30}
-                  value={missionDays}
-                  onChange={(e) => setMissionDays(Math.max(30, Number(e.target.value)))}
-                  className="w-full bg-[#030508] border border-white/20 rounded px-2.5 py-1 text-xs font-mono text-white"
-                />
-              </div>
-            </div>
+      {/* 2x2 KPI Summary (Comfortable width in side drawer) */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="bg-[#070c16] border border-white/15 rounded-xl p-3 min-w-0">
+          <div className="text-[11px] text-slate-400 truncate">
+            {pick('Dome Area', '온실 면적')}
+          </div>
+          <div className="text-lg font-mono tabular-nums font-bold text-white mt-0.5">
+            {decisionMode === 'abort' ? 0 : greenhouseAreaM2}
+            <span className="text-xs font-normal text-slate-400 ml-1">m²</span>
           </div>
         </div>
 
-        {/* Right: Output */}
-        <div className="lg:col-span-7 space-y-4">
-          <div
-            className={`border rounded-xl p-4 ${
-              decisionMode === 'direct'
-                ? 'bg-emerald-950/20 border-emerald-500/40'
-                : decisionMode === 'earth_hydro'
-                  ? 'bg-cyan-950/20 border-cyan-500/40'
-                  : 'bg-rose-950/20 border-rose-500/40'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              {decisionMode === 'direct' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : decisionMode === 'earth_hydro' ? (
-                <Droplets className="w-4 h-4 text-cyan-400 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              )}
-              <div>
-                <div className="text-[10px] font-mono text-slate-400">
-                  {pick('Optimal Farming Protocol', '최적 농법 판정')}
-                </div>
-                <h3 className="text-base font-bold text-white">{decisionTitle}</h3>
-                <p className="text-[11px] text-slate-300 mt-1">{decisionDesc}</p>
-              </div>
+        <div className="bg-[#070c16] border border-white/15 rounded-xl p-3 min-w-0">
+          <div className="text-[11px] text-slate-400 truncate">
+            {pick('Earth Media Cargo', '지구 배지 수송')}
+          </div>
+          <div className="text-lg font-mono tabular-nums font-bold text-amber-300 mt-0.5">
+            {earthSoilKg.toLocaleString()}
+            <span className="text-xs font-normal text-slate-400 ml-1">kg</span>
+          </div>
+        </div>
+
+        <div className="bg-[#070c16] border border-white/15 rounded-xl p-3 min-w-0">
+          <div className="text-[11px] text-slate-400 truncate">
+            {pick('Purified Water', '일일 정제수')}
+          </div>
+          <div className="text-lg font-mono tabular-nums font-bold text-cyan-300 mt-0.5">
+            {dailyWaterL}
+            <span className="text-xs font-normal text-slate-400 ml-1">
+              {pick('L/day', 'L/일')}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-[#070c16] border border-white/15 rounded-xl p-3 min-w-0">
+          <div className="text-[11px] text-slate-400 truncate">
+            {pick('Daily Harvest', '일일 수확량')}
+          </div>
+          <div className="text-lg font-mono tabular-nums font-bold text-emerald-300 mt-0.5">
+            {dailyHarvestKg}
+            <span className="text-xs font-normal text-slate-400 ml-1">
+              {pick('kg/day', 'kg/일')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Environment Sliders & Crew Size */}
+      <div className="bg-[#070c16] border border-white/15 rounded-xl p-3.5 space-y-3.5">
+        <h2 className="text-xs font-bold text-white">
+          {pick('Environment Simulator', '환경 변수 시뮬레이터')}
+        </h2>
+
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-300">
+                {pick('Water Probability', '지하수 확률')}
+              </span>
+              <span className="font-mono tabular-nums text-cyan-300 font-bold">
+                {waterProb}%
+              </span>
             </div>
+            <input
+              type="range"
+              min={5}
+              max={96}
+              value={waterProb}
+              onChange={(e) => setWaterProb(Number(e.target.value))}
+              className="w-full accent-cyan-400 cursor-pointer"
+            />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-[#070c16] border border-white/15 rounded-xl p-3">
-              <div className="text-[10px] text-slate-400">
-                {pick('Dome Area', '온실 면적')}
-              </div>
-              <div className="text-xl font-mono font-bold text-white mt-0.5">
-                {decisionMode === 'abort' ? 0 : greenhouseAreaM2}
-                <span className="text-[10px] font-normal text-slate-400 ml-0.5">m²</span>
-              </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-300">
+                {pick('Soil Fertility / Clay', '토양 비옥도 / 점토')}
+              </span>
+              <span className="font-mono tabular-nums text-emerald-300 font-bold">
+                {soilFertility}/100
+              </span>
             </div>
-
-            <div className="bg-[#070c16] border border-white/15 rounded-xl p-3">
-              <div className="text-[10px] text-slate-400">
-                {pick('Earth Media Cargo', '지구 배지 수송')}
-              </div>
-              <div className="text-xl font-mono font-bold text-amber-300 mt-0.5">
-                {earthSoilKg.toLocaleString()}
-                <span className="text-[10px] font-normal text-slate-400 ml-0.5">kg</span>
-              </div>
-            </div>
-
-            <div className="bg-[#070c16] border border-white/15 rounded-xl p-3">
-              <div className="text-[10px] text-slate-400">
-                {pick('Purified Water', '일일 정제수')}
-              </div>
-              <div className="text-xl font-mono font-bold text-cyan-300 mt-0.5">
-                {dailyWaterL}
-                <span className="text-[10px] font-normal text-slate-400 ml-0.5">
-                  {pick('L/day', 'L/일')}
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-[#070c16] border border-white/15 rounded-xl p-3">
-              <div className="text-[10px] text-slate-400">
-                {pick('Daily Harvest', '일일 수확량')}
-              </div>
-              <div className="text-xl font-mono font-bold text-emerald-300 mt-0.5">
-                {dailyHarvestKg}
-                <span className="text-[10px] font-normal text-slate-400 ml-0.5">
-                  {pick('kg/day', 'kg/일')}
-                </span>
-              </div>
-            </div>
+            <input
+              type="range"
+              min={5}
+              max={95}
+              value={soilFertility}
+              onChange={(e) => setSoilFertility(Number(e.target.value))}
+              className="w-full accent-emerald-400 cursor-pointer"
+            />
           </div>
 
-          <div className="bg-[#070c16] border border-white/15 rounded-xl p-4 space-y-2">
-            <h4 className="text-xs font-bold text-white">
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-300">
+                {pick('Terrain Slope', '경사도')}
+              </span>
+              <span className="font-mono tabular-nums text-amber-300 font-bold">
+                {slopeDeg.toFixed(1)}°
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0.5}
+              max={25}
+              step={0.1}
+              value={slopeDeg}
+              onChange={(e) => setSlopeDeg(Number(e.target.value))}
+              className="w-full accent-amber-400 cursor-pointer"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-white/10">
+            <label className="block min-w-0">
+              <span className="text-[11px] text-slate-400 block mb-1">
+                {pick('Crew Size', '대원수 (명)')}
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={crewCount}
+                onChange={(e) => setCrewCount(Math.max(1, Number(e.target.value)))}
+                className="w-full bg-[#030508] border border-white/20 rounded-lg px-3 py-1.5 text-sm font-mono tabular-nums text-white focus:outline-none focus:border-cyan-400"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] text-slate-400 block mb-1">
+                {pick('Mission Days', '임무일수 (일)')}
+              </span>
+              <input
+                type="number"
+                min={30}
+                max={900}
+                step={30}
+                value={missionDays}
+                onChange={(e) => setMissionDays(Math.max(30, Number(e.target.value)))}
+                className="w-full bg-[#030508] border border-white/20 rounded-lg px-3 py-1.5 text-sm font-mono tabular-nums text-white focus:outline-none focus:border-cyan-400"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* 3-Stage Field Protocol (Full-width stacked cards — zero narrow text wrapping) */}
+      <div className="bg-[#070c16] border border-white/15 rounded-xl p-3.5 space-y-2.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h4 className="text-xs font-bold text-white">
+            {pick('3-Stage Field Protocol', '현장 검증 3단계 요약')}
+          </h4>
+          <span className="text-[11px] font-mono tabular-nums text-slate-400">
+            {missionDays}
+            {pick('d', '일')} · {totalWaterL.toLocaleString()} L
+          </span>
+        </div>
+
+        <div className="space-y-2 text-xs">
+          <div className="bg-black/40 border border-white/10 rounded-lg px-3 py-2.5">
+            <span className="text-cyan-300 font-bold block mb-0.5">
+              {pick('Stage 1 · Drilling & RO', '1단계 · 시추 & 정수')}
+            </span>
+            <span className="text-slate-300 leading-relaxed">
               {pick(
-                `3-Stage Field Protocol (${missionDays} days · Total ${totalWaterL.toLocaleString()} L)`,
-                `현장 검증 3단계 요약 (${missionDays}일 · 총 ${totalWaterL.toLocaleString()} L)`
+                '2–5m drilling · Reverse osmosis desalination',
+                '2~5m 드릴링 · 역삼투압 염분·과염소산염 제거'
               )}
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-300">
-              <div className="bg-black/40 border border-white/10 rounded-lg p-2.5">
-                <span className="text-cyan-300 font-bold block mb-1">
-                  {pick('Stage 1 · Drilling & RO', '1단계 · 시추 & 정수')}
-                </span>
-                <span className="text-slate-400">
-                  {pick('2–5m drilling · Reverse osmosis desalination', '2~5m 드릴링 · 역삼투압 염분 제거')}
-                </span>
-              </div>
-              <div className="bg-black/40 border border-white/10 rounded-lg p-2.5">
-                <span className="text-emerald-300 font-bold block mb-1">
-                  {pick('Stage 2 · Substrate Loop', '2단계 · 배지 분기')}
-                </span>
-                <span className="text-slate-400">
-                  {pick('Compressed media supply · Closed-loop irrigation', '압축 배지 공급 · 순환 관수 시스템')}
-                </span>
-              </div>
-              <div className="bg-black/40 border border-white/10 rounded-lg p-2.5">
-                <span className="text-amber-300 font-bold block mb-1">
-                  {pick('Stage 3 · Robotic Ops', '3단계 · 로봇 관리')}
-                </span>
-                <span className="text-slate-400">
-                  {pick('Autonomous sampling · Safe AR return route', '무인 샘플링 · AR 안전 경로 복귀')}
-                </span>
-              </div>
-            </div>
+            </span>
+          </div>
+
+          <div className="bg-black/40 border border-white/10 rounded-lg px-3 py-2.5">
+            <span className="text-emerald-300 font-bold block mb-0.5">
+              {pick('Stage 2 · Substrate Loop', '2단계 · 배지 분기')}
+            </span>
+            <span className="text-slate-300 leading-relaxed">
+              {pick(
+                'Compressed media supply · Closed-loop irrigation',
+                '압축 배지 공급 · 밀폐 순환 관수 시스템 가동'
+              )}
+            </span>
+          </div>
+
+          <div className="bg-black/40 border border-white/10 rounded-lg px-3 py-2.5">
+            <span className="text-amber-300 font-bold block mb-0.5">
+              {pick('Stage 3 · Robotic Ops', '3단계 · 로봇 관리')}
+            </span>
+            <span className="text-slate-300 leading-relaxed">
+              {pick(
+                'Autonomous sampling · Safe AR return route',
+                '무인 샘플링 · AR 안전 경로 기반 기지 복귀'
+              )}
+            </span>
           </div>
         </div>
       </div>

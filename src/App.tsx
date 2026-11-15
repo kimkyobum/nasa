@@ -160,7 +160,7 @@ function waypointTraitNote(wp: RouteWaypoint, lang: Language): string {
 export default function App() {
   const { language, setLanguage, pick } = useLanguage();
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>('none');
-  const [customDrawerWidth, setCustomDrawerWidth] = useState<number>(384);
+  const [customDrawerWidth, setCustomDrawerWidth] = useState<number>(440);
   const [isResizingDrawer, setIsResizingDrawer] = useState<boolean>(false);
   const [fullscreen3D, setFullscreen3D] = useState<boolean>(false);
   const [regionsOpen, setRegionsOpen] = useState<boolean>(false);
@@ -239,7 +239,7 @@ export default function App() {
       const onMove = (ev: PointerEvent) => {
         const maxW = Math.max(420, window.innerWidth - 76);
         const nextW = Math.round(
-          Math.max(320, Math.min(maxW, startWidth + (ev.clientX - startX)))
+          Math.max(360, Math.min(maxW, startWidth + (ev.clientX - startX)))
         );
         setCustomDrawerWidth(nextW);
       };
@@ -519,7 +519,7 @@ export default function App() {
         className="absolute top-0 bottom-0 left-0 w-[68px] h-full bg-[#070c16] border-r border-white/15 flex flex-col items-center justify-between py-3 z-40 select-none shadow-2xl"
       >
         <div className="flex flex-col items-center w-full gap-1.5">
-          {/* Bio-Farm Mars Brand Logo */}
+          {/* Mars Hydro-Agri Mission Emblem */}
           <button
             type="button"
             onClick={() => {
@@ -530,27 +530,56 @@ export default function App() {
               'The Vision of Mars and warter extraction (Reset view)',
               'The Vision of Mars and warter extraction (시점 초기화)'
             )}
-            className="w-12 py-1.5 mb-1 rounded-xl flex flex-col items-center gap-1 hover:bg-white/[0.06] transition-colors group"
+            className="w-13 py-2 mb-1 rounded-xl flex flex-col items-center gap-1 hover:bg-white/[0.06] transition-colors group"
           >
-            <div className="relative w-7 h-7 flex items-center justify-center">
+            <div className="relative w-9 h-9 rounded-lg bg-[#0B111E] border border-cyan-500/30 flex items-center justify-center shadow-inner group-hover:border-cyan-400/70 transition-colors">
               <svg
-                width="28"
-                height="28"
-                viewBox="0 0 28 28"
+                width="30"
+                height="30"
+                viewBox="0 0 32 32"
                 fill="none"
                 aria-hidden="true"
                 className="transition-transform duration-300 group-hover:scale-105"
               >
-                <circle cx="14" cy="14" r="8.5" fill="#C2410C" stroke="#ea580c" strokeWidth="1" />
-                <ellipse cx="14" cy="14" rx="12.5" ry="4.5" transform="rotate(-20 14 14)" stroke="#38BDF8" strokeWidth="1.2" strokeDasharray="2 2" />
-                <path d="M14 17 C14 12, 10 9, 7 9 C7 13, 10 17, 14 17 Z" fill="#22C55E" />
-                <path d="M14 17 C14 11, 19 8, 22 9 C22 13, 18 17, 14 17 Z" fill="#4ADE80" />
-                <circle cx="20" cy="8.5" r="1.6" fill="#38BDF8" />
+                <defs>
+                  <linearGradient id="marsSphereGrad" x1="8" y1="6" x2="24" y2="26" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#FB923C" />
+                    <stop offset="55%" stopColor="#C2410C" />
+                    <stop offset="100%" stopColor="#7C2D12" />
+                  </linearGradient>
+                  <linearGradient id="hydroDropGrad" x1="16" y1="9" x2="16" y2="22" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#67E8F9" />
+                    <stop offset="100%" stopColor="#0284C7" />
+                  </linearGradient>
+                </defs>
+                {/* Outer Orbital Calibration Ring */}
+                <circle cx="16" cy="16" r="13.5" stroke="#38BDF8" strokeOpacity="0.35" strokeWidth="1" />
+                <path d="M16 1.5V4M16 28V30.5M1.5 16H4M28 16H30.5" stroke="#38BDF8" strokeOpacity="0.65" strokeWidth="1.2" strokeLinecap="round" />
+                {/* Precision Planetary Disc */}
+                <circle cx="16" cy="16" r="9.5" fill="url(#marsSphereGrad)" stroke="#F97316" strokeOpacity="0.45" strokeWidth="0.8" />
+                {/* Subsurface Equator Horizon Arc */}
+                <path d="M7.5 17.5C11.5 20 20.5 20 24.5 17.5" stroke="#070C16" strokeOpacity="0.45" strokeWidth="1.2" />
+                {/* Calibrated Hydro-Drop Core */}
+                <path
+                  d="M16 9.5C16 9.5 12 14.3 12 17.1C12 19.3 13.8 21.1 16 21.1C18.2 21.1 20 19.3 20 17.1C20 14.3 16 9.5 16 9.5Z"
+                  fill="url(#hydroDropGrad)"
+                  stroke="#E0F2FE"
+                  strokeWidth="0.8"
+                />
+                {/* Minimal Bio-Sprout Vein Inside Drop */}
+                <path d="M16 19.6V14.2M16 16.8L18.1 15.1" stroke="#0F172A" strokeWidth="1.15" strokeLinecap="round" />
+                {/* Orbital Satellite Node */}
+                <circle cx="25.8" cy="7.2" r="1.7" fill="#38BDF8" />
               </svg>
             </div>
-            <span className="text-[9px] font-bold tracking-[0.12em] text-slate-200 leading-none">
-              MARS
-            </span>
+            <div className="flex flex-col items-center leading-none gap-0.5">
+              <span className="text-[9px] font-mono font-bold tracking-[0.16em] text-white">
+                MARS
+              </span>
+              <span className="text-[7px] font-mono tracking-[0.14em] text-cyan-400">
+                HYDRO
+              </span>
+            </div>
           </button>
 
           <div className="w-8 h-px bg-white/10 mb-0.5" />
@@ -1273,8 +1302,8 @@ export default function App() {
                                 {pick(lm.nameEn, lm.nameKo)}
                               </div>
                               <div className="text-[10px] text-slate-200/80 font-mono mt-0.5">
-                                {pick(lm.nameKo, lm.nameEn)} · {formatCoord(lm.lat, lm.lon)} ·{' '}
-                                {lm.elevationM.toLocaleString()}m
+                                {language === 'ko' ? `${lm.nameEn} · ` : ''}
+                                {formatCoord(lm.lat, lm.lon)} · {lm.elevationM.toLocaleString()}m
                               </div>
                             </button>
                             <span className={`text-[10px] whitespace-nowrap ${typeColor}`}>
@@ -1889,7 +1918,9 @@ export default function App() {
                             <span>{pick(selectedLandmark.nameEn, selectedLandmark.nameKo)}</span>
                           </div>
                           <div className="text-[10px] font-mono text-slate-200/80 pl-5">
-                            {pick(selectedLandmark.nameKo, selectedLandmark.nameEn)}
+                            {language === 'ko'
+                              ? `${selectedLandmark.nameEn} · ${formatCoord(selectedLandmark.lat, selectedLandmark.lon)}`
+                              : `${formatCoord(selectedLandmark.lat, selectedLandmark.lon)} · ${selectedLandmark.elevationM.toLocaleString()}m`}
                           </div>
                         </div>
                         <span className="text-[10px] text-white bg-white/15 px-1.5 py-0.5 rounded whitespace-nowrap">
