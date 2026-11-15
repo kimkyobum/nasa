@@ -29,6 +29,11 @@ import { MarsFarmModal } from './components/MarsFarmModal';
 import { AgriSoilProtocolView } from './components/AgriSoilProtocolView';
 import { MarsDomeSidePanel } from './components/MarsDomeSidePanel';
 import {
+  GuidePhase,
+  GuideStep,
+  MissionOnboardingGuide,
+} from './components/MissionOnboardingGuide';
+import {
   MARS_LANDMARKS,
   REGION_PRESETS,
   findNearestLandmark,
@@ -215,6 +220,18 @@ export default function App() {
   const [domePanelOpen, setDomePanelOpen] = useState<boolean>(false);
   const [domePanelWide, setDomePanelWide] = useState<boolean>(false);
 
+  // Interactive 3-step onboarding guide (Layers -> Route -> Bio-Dome)
+  const [guidePhase, setGuidePhase] = useState<GuidePhase>(() => {
+    try {
+      return window.localStorage.getItem('mars_mission_guide_seen') === '1'
+        ? 'closed'
+        : 'prompt';
+    } catch {
+      return 'prompt';
+    }
+  });
+  const [guideStep, setGuideStep] = useState<GuideStep>(1);
+
   const regionsMenuRef = useRef<HTMLDivElement>(null);
   const lastDrawerRef = useRef<Exclude<ActiveDrawer, 'none'>>('place');
 
@@ -369,6 +386,40 @@ export default function App() {
     setInspectedPoint(sampleMarsTelemetry(dome.lat, dome.lon));
     const near = findNearestLandmark(dome.lat, dome.lon, 0.55);
     setSelectedLandmark(near ? near.landmark : null);
+  }, []);
+
+  const goToGuideStep = useCallback(
+    (nextStep: GuideStep) => {
+      setGuideStep(nextStep);
+      setGuidePhase('active');
+      setRegionsOpen(false);
+      if (nextStep === 1) {
+        setActiveDrawer('layers');
+        setClickTool(null);
+      } else if (nextStep === 2) {
+        setActiveDrawer('nav');
+        if (!startCoord) {
+          setClickTool('start');
+        } else if (!destCoord) {
+          setClickTool('destination');
+        } else {
+          setClickTool(null);
+        }
+      } else if (nextStep === 3) {
+        setActiveDrawer('nav');
+        setClickTool(destCoord ? null : 'dome');
+      }
+    },
+    [startCoord, destCoord]
+  );
+
+  const closeAndRememberGuide = useCallback(() => {
+    setGuidePhase('closed');
+    try {
+      window.localStorage.setItem('mars_mission_guide_seen', '1');
+    } catch {
+      // ignore storage errors
+    }
   }, []);
 
   // Clicking on a region on the map smoothly slides open the Left-Wall Place + 3D AR Panel
@@ -759,11 +810,25 @@ export default function App() {
           </button>
         </div>
 
-        {/* Bottom Region Presets & Inspect Trigger */}
+        {/* Bottom Region Presets, Guide & Inspect Trigger */}
         <div
           className="relative flex flex-col items-center w-full gap-1.5 pt-2 border-t border-white/10"
           ref={regionsMenuRef}
         >
+          <button
+            type="button"
+            onClick={() => setGuidePhase('prompt')}
+            title={pick('Open Mission Guide', '미션 가이드 다시 열기')}
+            className={`relative w-full py-1.5 flex flex-col items-center gap-0.5 transition-colors ${
+              guidePhase !== 'closed'
+                ? 'text-sky-300 bg-sky-500/15'
+                : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+            }`}
+          >
+            <HelpCircle className="w-[17px] h-[17px]" strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">{pick('Guide', '가이드')}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => openDrawerFromMenu('inspect')}
@@ -2196,6 +2261,40 @@ export default function App() {
             />
           </div>
         )}
+
+        {/* First-Visit Prompt & Interactive 3-Step Mission Guide */}
+        <MissionOnboardingGuide
+          phase={guidePhase}
+          step={guideStep}
+          leftOffsetPx={isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}
+          rightOffsetPx={rightPanelOffsetPx}
+          layers={layers}
+          activeLayersCount={activeLayersCount}
+          startSet={Boolean(startCoord)}
+          destSet={Boolean(destCoord)}
+          clickTool={clickTool}
+          domeInstalled={deployedDomes.length > 0 && domePanelOpen}
+          onStartGuide={() => goToGuideStep(1)}
+          onSkipGuide={closeAndRememberGuide}
+          onGoToStep={goToGuideStep}
+          onFinishGuide={closeAndRememberGuide}
+          onQuickEnableWaterSoil={() =>
+            setLayers((prev) => ({
+              ...prev,
+              swimWater: true,
+              soilFertility: true,
+            }))
+          }
+          onSelectPickTool={(tool) => {
+            setActiveDrawer('nav');
+            setClickTool(tool);
+          }}
+          onDeployDomeAtTarget={() => {
+            if (destCoord) {
+              installDomeAt(destCoord.lat, destCoord.lon);
+            }
+          }}
+        />
       </main>
 
       {/* Smart Bio-Dome Greenhouse Cultivation Modal (Pops out on map click or via top HUD) */}
