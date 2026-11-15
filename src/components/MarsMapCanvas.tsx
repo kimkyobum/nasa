@@ -7,6 +7,7 @@ import {
 } from '../data/marsData';
 import {
   ClickTool,
+  DeployedDome,
   Landmark,
   LandmarkType,
   MarsBaseLayerId,
@@ -47,6 +48,9 @@ interface MarsMapCanvasProps {
   ) => void;
   onMapClick: (pt: MarsTelemetryPoint, screenPos?: { x: number; y: number }) => void;
   onPinClick?: (pin: 'start' | 'destination') => void;
+  deployedDomes?: DeployedDome[];
+  selectedDomeId?: string | null;
+  onSelectDome?: (dome: DeployedDome) => void;
   onSelectLandmark: (lm: Landmark | null) => void;
   onShowArGuide?: () => void;
 }
@@ -147,6 +151,9 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
     onHoverWaypoint,
     onMapClick,
     onPinClick,
+    deployedDomes = [],
+    selectedDomeId = null,
+    onSelectDome,
     onSelectLandmark,
     onShowArGuide,
   }) => {
@@ -187,6 +194,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       landmarkTypeFilter,
       highlightedRoutePoint,
       hoveredWaypointIndex,
+      deployedDomes,
+      selectedDomeId,
       canvasSize,
       onViewportChange,
     });
@@ -203,6 +212,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       landmarkTypeFilter,
       highlightedRoutePoint,
       hoveredWaypointIndex,
+      deployedDomes,
+      selectedDomeId,
       canvasSize,
       onViewportChange,
     };
@@ -1013,6 +1024,93 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
         ctx.restore();
       }
 
+      // 7. Deployed Geodesic Bio-Dome Outposts
+      const curDomes = propsRef.current.deployedDomes;
+      const curSelectedDomeId = propsRef.current.selectedDomeId;
+      for (let di = 0; di < curDomes.length; di++) {
+        const dome = curDomes[di];
+        const p = toScreen(dome.lat, dome.lon);
+        if (p.x < -40 || p.x > width + 40 || p.y < -40 || p.y > height + 40) {
+          continue;
+        }
+        const isDomeSelected = dome.id === curSelectedDomeId;
+        const r =
+          dome.tier === 'metropolis' ? 14 : dome.tier === 'habitat' ? 11.5 : 9.5;
+
+        ctx.save();
+        // Selection halo
+        if (isDomeSelected) {
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r + 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Armored base platform shadow & rim
+        ctx.fillStyle = 'rgba(7, 11, 20, 0.9)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Translucent cyan bio-dome glass & green bio-core
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
+        ctx.strokeStyle = isDomeSelected ? '#FBBF24' : '#E08B52';
+        ctx.lineWidth = isDomeSelected ? 2.2 : 1.7;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner green hydroponic ring & central cyan water spire
+        ctx.strokeStyle = '#34D399';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Geodesic cross-struts
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+        ctx.lineWidth = 0.9;
+        for (let s = 0; s < 3; s++) {
+          const ang = (s / 3) * Math.PI;
+          ctx.beginPath();
+          ctx.moveTo(p.x + Math.cos(ang) * r, p.y + Math.sin(ang) * r);
+          ctx.lineTo(p.x - Math.cos(ang) * r, p.y - Math.sin(ang) * r);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#67E8F9';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label badge above dome
+        const dLabel = curLanguage === 'en' ? dome.nameEn : dome.nameKo;
+        ctx.font = '700 10px "Plus Jakarta Sans", "IBM Plex Sans KR", sans-serif';
+        const dtw = ctx.measureText(dLabel).width;
+        const bx = clamp(p.x - dtw / 2 - 6, 8, width - dtw - 20);
+        const by = p.y - r - 22;
+        ctx.fillStyle = isDomeSelected
+          ? 'rgba(15, 23, 42, 0.94)'
+          : 'rgba(9, 14, 25, 0.88)';
+        ctx.strokeStyle = isDomeSelected
+          ? 'rgba(251, 191, 36, 0.85)'
+          : 'rgba(56, 189, 248, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, dtw + 12, 17, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isDomeSelected ? '#FEF08A' : '#E0F2FE';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(dLabel, bx + 6, by + 8.5);
+        ctx.restore();
+      }
+
       ctx.restore();
     }, [drawWmtsLayer]);
 
@@ -1066,6 +1164,8 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       landmarkTypeFilter,
       highlightedRoutePoint,
       hoveredWaypointIndex,
+      deployedDomes,
+      selectedDomeId,
       scheduleDraw,
     ]);
 
@@ -1220,6 +1320,19 @@ export const MarsMapCanvas: React.FC<MarsMapCanvasProps> = React.memo(
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       const v = viewRef.current;
+
+      // Direct click on a deployed Bio-Dome opens its Habitat & 3D Simulation Panel
+      if (clickTool === null && onSelectDome && deployedDomes.length > 0) {
+        for (let di = deployedDomes.length - 1; di >= 0; di--) {
+          const d = deployedDomes[di];
+          const px = canvasSize.width / 2 + (d.lon - v.lon) * v.ppd;
+          const py = canvasSize.height / 2 + (v.lat - d.lat) * v.ppd;
+          if (Math.hypot(sx - px, sy - py) < 22) {
+            onSelectDome(d);
+            return;
+          }
+        }
+      }
 
       // Direct click on existing START or TARGET pin enters relocate mode for that pin
       if (clickTool === null && onPinClick) {

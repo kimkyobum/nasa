@@ -27,14 +27,17 @@ import { MarsRegionSidePanel } from './components/MarsRegionSidePanel';
 import { RouteElevationChart } from './components/RouteElevationChart';
 import { MarsFarmModal } from './components/MarsFarmModal';
 import { AgriSoilProtocolView } from './components/AgriSoilProtocolView';
+import { MarsDomeSidePanel } from './components/MarsDomeSidePanel';
 import {
   MARS_LANDMARKS,
   REGION_PRESETS,
   findNearestLandmark,
   sampleMarsTelemetry,
 } from './data/marsData';
+import { createDeployedDome } from './data/domeSimulation';
 import {
   ClickTool,
+  DeployedDome,
   FarmingTier,
   Landmark,
   MarsBaseLayerId,
@@ -206,6 +209,12 @@ export default function App() {
   const [route, setRoute] = useState<RouteResult>(EMPTY_ROUTE);
   const [isRouting, setIsRouting] = useState<boolean>(false);
 
+  // Deployed Mars Bio-Domes directly on the navigation map
+  const [deployedDomes, setDeployedDomes] = useState<DeployedDome[]>([]);
+  const [activeDomeId, setActiveDomeId] = useState<string | null>(null);
+  const [domePanelOpen, setDomePanelOpen] = useState<boolean>(false);
+  const [domePanelWide, setDomePanelWide] = useState<boolean>(false);
+
   const regionsMenuRef = useRef<HTMLDivElement>(null);
   const lastDrawerRef = useRef<Exclude<ActiveDrawer, 'none'>>('place');
 
@@ -317,6 +326,51 @@ export default function App() {
     []
   );
 
+  const installDomeAt = useCallback(
+    (lat: number, lon: number) => {
+      const nextDome = createDeployedDome(lat, lon, deployedDomes.length, 'habitat');
+      setDeployedDomes((prev) => [...prev, nextDome]);
+      setActiveDomeId(nextDome.id);
+      setDomePanelOpen(true);
+      setClickTool(null);
+      setInspectedPoint(sampleMarsTelemetry(lat, lon));
+      const near = findNearestLandmark(lat, lon, 0.55);
+      setSelectedLandmark(near ? near.landmark : null);
+    },
+    [deployedDomes.length]
+  );
+
+  const handleUpdateDome = useCallback(
+    (domeId: string, patch: Partial<DeployedDome>) => {
+      setDeployedDomes((prev) =>
+        prev.map((d) => (d.id === domeId ? { ...d, ...patch } : d))
+      );
+    },
+    []
+  );
+
+  const handleRemoveDome = useCallback(
+    (domeId: string) => {
+      setDeployedDomes((prev) => {
+        const next = prev.filter((d) => d.id !== domeId);
+        if (activeDomeId === domeId) {
+          setActiveDomeId(next.length > 0 ? next[0].id : null);
+          if (next.length === 0) setDomePanelOpen(false);
+        }
+        return next;
+      });
+    },
+    [activeDomeId]
+  );
+
+  const handleSelectDomeFromMap = useCallback((dome: DeployedDome) => {
+    setActiveDomeId(dome.id);
+    setDomePanelOpen(true);
+    setInspectedPoint(sampleMarsTelemetry(dome.lat, dome.lon));
+    const near = findNearestLandmark(dome.lat, dome.lon, 0.55);
+    setSelectedLandmark(near ? near.landmark : null);
+  }, []);
+
   // Clicking on a region on the map smoothly slides open the Left-Wall Place + 3D AR Panel
   const handleMapClick = useCallback(
     (pt: MarsTelemetryPoint) => {
@@ -326,7 +380,9 @@ export default function App() {
       const near = findNearestLandmark(pt.lat, pt.lon, 0.55);
       setSelectedLandmark(near ? near.landmark : null);
 
-      if (clickTool === 'start') {
+      if (clickTool === 'dome') {
+        installDomeAt(pt.lat, pt.lon);
+      } else if (clickTool === 'start') {
         setStartCoord({ lat: pt.lat, lon: pt.lon });
         setClickTool(destCoord === null ? 'destination' : null);
         if (near) setActiveDrawer('place');
@@ -339,7 +395,7 @@ export default function App() {
         setActiveDrawer('inspect');
       }
     },
-    [regionsOpen, clickTool, destCoord]
+    [regionsOpen, clickTool, destCoord, installDomeAt]
   );
 
   const handlePinClick = useCallback((pin: 'start' | 'destination') => {
@@ -510,6 +566,16 @@ export default function App() {
   const isDrawerOpen = activeDrawer !== 'none';
   const isPlaceFullscreen = fullscreen3D && activeDrawer === 'place';
   const drawerWidthPx = customDrawerWidth;
+  const activeDome = useMemo(
+    () => deployedDomes.find((d) => d.id === activeDomeId) ?? null,
+    [deployedDomes, activeDomeId]
+  );
+  const rightPanelOffsetPx =
+    domePanelOpen && activeDome && !isPlaceFullscreen
+      ? domePanelWide
+        ? 660
+        : 470
+      : 0;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#030508] text-slate-100">
@@ -519,7 +585,7 @@ export default function App() {
         className="absolute top-0 bottom-0 left-0 w-[68px] h-full bg-[#070c16] border-r border-white/15 flex flex-col items-center justify-between py-3 z-40 select-none shadow-2xl"
       >
         <div className="flex flex-col items-center w-full gap-1.5">
-          {/* Mars Hydro-Agri Mission Emblem */}
+          {/* Pure Typographic Martian Brand Wordmark (Text-Only) */}
           <button
             type="button"
             onClick={() => {
@@ -530,59 +596,50 @@ export default function App() {
               'The Vision of Mars and warter extraction (Reset view)',
               'The Vision of Mars and warter extraction (시점 초기화)'
             )}
-            className="w-13 py-2 mb-1 rounded-xl flex flex-col items-center gap-1 hover:bg-white/[0.06] transition-colors group"
+            className="w-full px-1.5 py-2 mb-1 flex flex-col items-center justify-center hover:bg-white/[0.04] transition-colors group"
           >
-            <div className="relative w-9 h-9 rounded-lg bg-[#0B111E] border border-cyan-500/30 flex items-center justify-center shadow-inner group-hover:border-cyan-400/70 transition-colors">
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 32 32"
-                fill="none"
-                aria-hidden="true"
-                className="transition-transform duration-300 group-hover:scale-105"
-              >
-                <defs>
-                  <linearGradient id="marsSphereGrad" x1="8" y1="6" x2="24" y2="26" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#FB923C" />
-                    <stop offset="55%" stopColor="#C2410C" />
-                    <stop offset="100%" stopColor="#7C2D12" />
-                  </linearGradient>
-                  <linearGradient id="hydroDropGrad" x1="16" y1="9" x2="16" y2="22" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#67E8F9" />
-                    <stop offset="100%" stopColor="#0284C7" />
-                  </linearGradient>
-                </defs>
-                {/* Outer Orbital Calibration Ring */}
-                <circle cx="16" cy="16" r="13.5" stroke="#38BDF8" strokeOpacity="0.35" strokeWidth="1" />
-                <path d="M16 1.5V4M16 28V30.5M1.5 16H4M28 16H30.5" stroke="#38BDF8" strokeOpacity="0.65" strokeWidth="1.2" strokeLinecap="round" />
-                {/* Precision Planetary Disc */}
-                <circle cx="16" cy="16" r="9.5" fill="url(#marsSphereGrad)" stroke="#F97316" strokeOpacity="0.45" strokeWidth="0.8" />
-                {/* Subsurface Equator Horizon Arc */}
-                <path d="M7.5 17.5C11.5 20 20.5 20 24.5 17.5" stroke="#070C16" strokeOpacity="0.45" strokeWidth="1.2" />
-                {/* Calibrated Hydro-Drop Core */}
-                <path
-                  d="M16 9.5C16 9.5 12 14.3 12 17.1C12 19.3 13.8 21.1 16 21.1C18.2 21.1 20 19.3 20 17.1C20 14.3 16 9.5 16 9.5Z"
-                  fill="url(#hydroDropGrad)"
-                  stroke="#E0F2FE"
-                  strokeWidth="0.8"
-                />
-                {/* Minimal Bio-Sprout Vein Inside Drop */}
-                <path d="M16 19.6V14.2M16 16.8L18.1 15.1" stroke="#0F172A" strokeWidth="1.15" strokeLinecap="round" />
-                {/* Orbital Satellite Node */}
-                <circle cx="25.8" cy="7.2" r="1.7" fill="#38BDF8" />
-              </svg>
-            </div>
-            <div className="flex flex-col items-center leading-none gap-0.5">
-              <span className="text-[9px] font-mono font-bold tracking-[0.16em] text-white">
-                MARS
-              </span>
-              <span className="text-[7px] font-mono tracking-[0.14em] text-cyan-400">
-                HYDRO
-              </span>
-            </div>
+            <span className="text-[15px] font-black tracking-[0.18em] leading-none bg-gradient-to-b from-orange-200 via-orange-400 to-rose-600 bg-clip-text text-transparent pl-[0.18em]">
+              MARS
+            </span>
+            <span className="w-9 h-[1px] my-1 bg-gradient-to-r from-transparent via-orange-400/75 to-transparent" />
+            <span className="text-[7px] font-mono font-semibold tracking-[0.22em] text-cyan-300/90 leading-none pl-[0.22em]">
+              HYDRO
+            </span>
           </button>
 
           <div className="w-8 h-px bg-white/10 mb-0.5" />
+
+          {/* 0. Deploy / Open Bio-Dome Outpost on Navigation Map */}
+          <button
+            type="button"
+            onClick={() => {
+              if (clickTool === 'dome') {
+                setClickTool(null);
+              } else {
+                setClickTool('dome');
+              }
+            }}
+            className={`relative w-full py-2 flex flex-col items-center gap-1 transition-colors ${
+              clickTool === 'dome' || (domePanelOpen && activeDome)
+                ? 'text-amber-300 bg-amber-500/20'
+                : 'text-amber-400/90 hover:text-amber-200 hover:bg-amber-500/10'
+            }`}
+          >
+            {(clickTool === 'dome' || (domePanelOpen && activeDome)) && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-amber-400" />
+            )}
+            <div className="relative">
+              <Sparkles className="w-[17px] h-[17px]" strokeWidth={2} />
+              {deployedDomes.length > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 px-1 min-w-[14px] h-[14px] text-[9px] font-mono font-bold rounded-full bg-amber-400 text-slate-950 flex items-center justify-center leading-none">
+                  {deployedDomes.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold">
+              {pick('Bio-Dome', '바이오 돔')}
+            </span>
+          </button>
 
           {/* 1. Primary Bio-Farm Agriculture Button */}
           <button
@@ -794,16 +851,20 @@ export default function App() {
           onHoverWaypoint={handleHoverWaypoint}
           onMapClick={handleMapClick}
           onPinClick={handlePinClick}
+          deployedDomes={deployedDomes}
+          selectedDomeId={domePanelOpen ? activeDomeId : null}
+          onSelectDome={handleSelectDomeFromMap}
           onSelectLandmark={setSelectedLandmark}
           onShowArGuide={() => setArGuideOpen(true)}
         />
 
-        {/* Top-Right Language Switcher (EN / 한국어) */}
+        {/* Top-Right Language Switcher (EN / 한국어) — shifts cleanly left of right dome panel */}
         {!isPlaceFullscreen && (
           <div
             role="group"
             aria-label={pick('Language selector', '언어 선택')}
-            className="absolute top-4 right-4 z-40 flex items-center bg-[#070c16]/95 border border-white/25 rounded-xl p-1 shadow-xl backdrop-blur-md"
+            style={{ right: `${rightPanelOffsetPx + 16}px` }}
+            className="absolute top-4 z-40 flex items-center bg-[#070c16]/95 border border-white/25 rounded-xl p-1 shadow-xl backdrop-blur-md transition-[right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
             <button
               type="button"
@@ -830,10 +891,13 @@ export default function App() {
           </div>
         )}
 
-        {/* Prominent Subsurface Water & Bio-Farm Agritech HUD */}
+        {/* Prominent Subsurface Water, Bio-Dome Install & Route HUD */}
         <div
-          style={{ left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px` }}
-          className="absolute top-4 z-20 flex items-center gap-2 pointer-events-auto transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex-wrap pr-32"
+          style={{
+            left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px`,
+            right: `${rightPanelOffsetPx + 132}px`,
+          }}
+          className="absolute top-4 z-20 flex items-center gap-2 pointer-events-auto transition-[left,right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex-wrap"
         >
           <button
             type="button"
@@ -863,6 +927,44 @@ export default function App() {
               </div>
             </div>
           </button>
+
+          {/* Direct Bio-Dome Installation Action on Navigation Map */}
+          {destCoord ? (
+            <button
+              type="button"
+              onClick={() => installDomeAt(destCoord.lat, destCoord.lon)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/60 text-left shadow-xl transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+              <div>
+                <div className="text-[9px] font-mono uppercase tracking-wider text-amber-300 font-semibold">
+                  {pick('Deploy at Target', '목적지 돔 설치')}
+                </div>
+                <div className="text-[11px] font-bold text-white">
+                  {pick('Install 3D Bio-Dome Here', '여기에 3D 바이오 돔 설치')}
+                </div>
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                setClickTool((prev) => (prev === 'dome' ? null : 'dome'))
+              }
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-left shadow-xl transition-colors ${
+                clickTool === 'dome'
+                  ? 'bg-amber-400 text-slate-950 border-amber-200 font-bold'
+                  : 'bg-[#090d16] border-amber-400/45 text-amber-100 hover:border-amber-300'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <div className="text-[11px] font-semibold">
+                {clickTool === 'dome'
+                  ? pick('Click Map to Install Dome', '지도를 클릭해 돔 설치 중...')
+                  : pick('Place Bio-Dome on Map', '지도에 바이오 돔 설치')}
+              </div>
+            </button>
+          )}
 
           {/* 2. Water-to-Greenhouse Route Logistics Readout */}
           {startCoord && destCoord && (
@@ -948,13 +1050,22 @@ export default function App() {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 max-w-[90vw] flex items-center gap-3 bg-slate-900/75 border border-sky-300/50 text-white px-4 py-1.5 rounded-lg text-xs shadow-xl">
             <span
               className={`w-2 h-2 rounded-full shrink-0 ${
-                clickTool === 'start' ? 'bg-white' : 'bg-sky-300'
+                clickTool === 'start'
+                  ? 'bg-white'
+                  : clickTool === 'dome'
+                    ? 'bg-amber-400'
+                    : 'bg-sky-300'
               }`}
             />
             <span>
               {clickTool === 'start'
                 ? pick('Click map to set START point', '지도를 클릭해 출발지(START)를 설정하세요')
-                : pick('Click map to set TARGET point', '지도를 클릭해 목적지(TARGET)를 설정하세요')}
+                : clickTool === 'dome'
+                  ? pick(
+                      'Click anywhere on the navigation map to deploy a 3D Bio-Dome',
+                      '내비게이션 지도에서 원하는 위치를 클릭해 3D 바이오 돔을 설치하세요'
+                    )
+                  : pick('Click map to set TARGET point', '지도를 클릭해 목적지(TARGET)를 설정하세요')}
             </span>
             <button
               type="button"
@@ -1061,7 +1172,10 @@ export default function App() {
         )}
 
         {/* Minimal Translucent Zoom Controls (Bottom-Right Corner) */}
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-slate-900/75 border border-white/25 p-1 rounded-lg shadow-lg">
+        <div
+          style={{ right: `${rightPanelOffsetPx + 16}px` }}
+          className="absolute bottom-4 z-20 flex items-center gap-1 bg-slate-900/75 border border-white/25 p-1 rounded-lg shadow-lg transition-[right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        >
           <button
             type="button"
             onClick={() =>
@@ -1414,6 +1528,39 @@ export default function App() {
                         {clickTool === 'destination' ? pick('Picking', '선택 중') : pick('Change', '변경')}
                       </span>
                     </button>
+
+                    {/* Install Bio-Dome at Target or Anywhere on Nav Map */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        disabled={!destCoord}
+                        onClick={() => {
+                          if (destCoord) installDomeAt(destCoord.lat, destCoord.lon);
+                        }}
+                        className="py-2 px-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 disabled:opacity-40 disabled:pointer-events-none border border-amber-400/50 text-amber-100 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                        <span className="truncate">
+                          {pick('Dome at Target', '목적지에 돔 설치')}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setClickTool((prev) => (prev === 'dome' ? null : 'dome'))
+                        }
+                        className={`py-2 px-2.5 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                          clickTool === 'dome'
+                            ? 'bg-amber-400 text-slate-950 border-amber-200'
+                            : 'bg-white/[0.08] hover:bg-white/[0.15] border-white/20 text-slate-100'
+                        }`}
+                      >
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">
+                          {pick('Place on Map', '지도 찍어 돔 설치')}
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2 pt-3 border-t border-white/15">
@@ -2005,11 +2152,39 @@ export default function App() {
           )}
         </div>
 
+        {/* Right-Side Interactive 3D Bio-Dome Habitat & Simulation Panel */}
+        {domePanelOpen && activeDome && !isPlaceFullscreen && (
+          <div className="absolute top-0 right-0 bottom-0 z-30 pointer-events-auto">
+            <MarsDomeSidePanel
+              dome={activeDome}
+              allDomes={deployedDomes}
+              wideMode={domePanelWide}
+              onToggleWideMode={() => setDomePanelWide((v) => !v)}
+              onClose={() => setDomePanelOpen(false)}
+              onSelectDome={(id) => setActiveDomeId(id)}
+              onUpdateDome={handleUpdateDome}
+              onRemoveDome={handleRemoveDome}
+              onJumpToMap={(lat, lon) => {
+                setViewLat(lat);
+                setViewLon(lon);
+                if (viewPpd < 12) setViewPpd(16);
+              }}
+              onOpenFullCropModal={(lat, lon) => {
+                setInspectedPoint(sampleMarsTelemetry(lat, lon));
+                setFarmModalOpen(true);
+              }}
+            />
+          </div>
+        )}
+
         {/* Optional Floating Route Elevation Chart Synced With Map Beacon (Overlap-free) */}
         {chartOpen && (
           <div
-            style={{ left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px` }}
-            className="absolute bottom-4 right-[124px] z-20 shadow-2xl transition-[left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{
+              left: `${isDrawerOpen ? 68 + drawerWidthPx + 20 : 88}px`,
+              right: `${rightPanelOffsetPx + 124}px`,
+            }}
+            className="absolute bottom-4 z-20 shadow-2xl transition-[left,right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
             <RouteElevationChart
               route={route}

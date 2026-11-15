@@ -12,7 +12,23 @@ export type MarsBaseLayerId = 'viking' | 'mola' | 'hybrid';
 
 export type NavigationMode = 'safe' | 'fast' | 'water';
 
-export type ClickTool = 'destination' | 'start' | null;
+export type ClickTool = 'destination' | 'start' | 'dome' | null;
+
+export type DomeTier = 'outpost' | 'habitat' | 'metropolis';
+
+export type DomeSubsystemId = 'overview' | 'drill' | 'airlock' | 'hydroponics' | 'spire';
+
+export interface DeployedDome {
+  id: string;
+  nameEn: string;
+  nameKo: string;
+  lat: number;
+  lon: number;
+  tier: DomeTier;
+  crewCount: number;
+  selectedCropIds: string[];
+  installedAtSol: number;
+}
 
 export type FarmingStrategy =
   | 'direct_soil'
